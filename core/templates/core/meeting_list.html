@@ -1,0 +1,53 @@
+{% extends 'core/base.html' %}
+
+{% block title %}All Meetings - Meetingly{% endblock %}
+
+{% block content %}
+<div class="meetings-page">
+    <div class="page-header">
+        <div class="header-left">
+            <h1>All Meetings</h1>
+            <p>Manage and review your meeting history</p>
+        </div>
+        <div class="header-right">
+            <a href="{% url 'upload_meeting' %}" class="btn btn-primary">
+                <i class="fas fa-plus"></i> New Meeting
+            </a>
+            <a href="{% url 'meeting_list' %}?ai=true" class="btn btn-secondary">
+                AI Meetings
+            </a>
+        </div>
+    </div>
+
+    <div class="meetings-container">
+        {% if meetings %}
+            <div class="meetings-grid">
+                {% for meeting in meetings %}
+                <div class="meeting-card" onclick="window.location.href='{% url 'meeting_detail' meeting.id %}'">
+                    <div class="card-header">
+                        <div class="status-dot status-{{ meeting.status }}"></div>
+                        <span class="card-date">{{ meeting.created_at|date:"M d, Y" }}</span>
+                    </div>
+                    <h3 class="card-title">{{ meeting.title }}</h3>
+                    <p class="card-time">{{ meeting.created_at|date:"H:i" }}</p>
+                    {% if meeting.summary %}
+                    <p class="card-preview">{{ meeting.summary|truncatewords:20 }}</p>
+                    {% endif %}
+                    <div class="card-footer">
+                        <span class="status-badge status-{{ meeting.status }}">{{ meeting.status|capfirst }}</span>
+                        <i class="fas fa-arrow-right"></i>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="empty-state">
+                <i class="fas fa-inbox"></i>
+                <h3>No meetings found</h3>
+                <p>Upload your first meeting to get started</p>
+                <a href="{% url 'upload_meeting' %}" class="btn btn-primary">Upload Meeting</a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

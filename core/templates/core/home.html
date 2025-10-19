@@ -1,0 +1,218 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Dashboard - Meetingly{% endblock %}
+
+{% block content %}
+<div class="homepage">
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="hero-content">
+            <h1 class="hero-title">Transform Meetings with AI</h1>
+            <p class="hero-subtitle">Automatically convert meeting recordings into summaries, action items, and insights. Save hours every week with intelligent automation.</p>
+            <div class="hero-buttons">
+                <a href="{% url 'upload_meeting' %}" class="btn btn-primary">
+                    <i class="fas fa-upload"></i>
+                    Upload Meeting
+                </a>
+                <a href="{% url 'process_text_meeting' %}" class="btn btn-secondary">
+                    <i class="fas fa-edit"></i>
+                    Process Text
+                </a>
+            </div>
+        </div>
+        <div class="hero-stats">
+            <div class="stat">
+                <div class="stat-number">{{ recent_meetings|length|default:'0' }}</div>
+                <div class="stat-label">Meetings Processed</div>
+            </div>
+            <div class="stat">
+                <div class="stat-number">98%</div>
+                <div class="stat-label">Accuracy Rate</div>
+            </div>
+            <div class="stat">
+                <div class="stat-number">5hrs</div>
+                <div class="stat-label">Time Saved Weekly</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="features">
+        <div class="section-header">
+            <h2>Powerful Features</h2>
+            <p>Everything you need to make meetings more productive</p>
+        </div>
+        <div class="features-grid">
+            <div class="feature">
+                <div class="feature-icon">
+                    <i class="fas fa-microphone"></i>
+                </div>
+                <h3>Audio Transcription</h3>
+                <p>Convert speech to text with 98% accuracy. Support for multiple languages and file formats.</p>
+                <ul class="feature-list">
+                    <li>Multi-language support</li>
+                    <li>Speaker identification</li>
+                    <li>Noise reduction</li>
+                </ul>
+            </div>
+            <div class="feature">
+                <div class="feature-icon">
+                    <i class="fas fa-brain"></i>
+                </div>
+                <h3>AI Summarization</h3>
+                <p>Get concise summaries highlighting key decisions, outcomes, and important discussions.</p>
+                <ul class="feature-list">
+                    <li>Key point extraction</li>
+                    <li>Decision tracking</li>
+                    <li>Topic categorization</li>
+                </ul>
+            </div>
+            <div class="feature">
+                <div class="feature-icon">
+                    <i class="fas fa-tasks"></i>
+                </div>
+                <h3>Action Items</h3>
+                <p>Automatically identify tasks, assignments, and deadlines from meeting conversations.</p>
+                <ul class="feature-list">
+                    <li>Task assignment</li>
+                    <li>Deadline tracking</li>
+                    <li>Progress monitoring</li>
+                </ul>
+            </div>
+        </div>
+    </section>
+
+    <!-- How It Works -->
+    <section class="how-it-works">
+        <div class="section-header">
+            <h2>How It Works</h2>
+            <p>Simple 3-step process to transform your meetings</p>
+        </div>
+        <div class="steps">
+            <div class="step">
+                <div class="step-number">1</div>
+                <div class="step-content">
+                    <h3>Upload or Process</h3>
+                    <p>Upload audio files or paste text transcripts from your meetings</p>
+                </div>
+            </div>
+            <div class="step">
+                <div class="step-number">2</div>
+                <div class="step-content">
+                    <h3>AI Analysis</h3>
+                    <p>Our AI processes content to extract key insights and action items</p>
+                </div>
+            </div>
+            <div class="step">
+                <div class="step-number">3</div>
+                <div class="step-content">
+                    <h3>Get Results</h3>
+                    <p>Receive organized summaries, tasks, and actionable insights</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Recent Activity -->
+    <section class="recent-activity">
+        <div class="section-header">
+            <h2>Recent Activity</h2>
+            <a href="{% url 'meeting_list' %}" class="view-all">View All</a>
+        </div>
+        <div class="activity-grid">
+            {% if recent_meetings %}
+                {% for meeting in recent_meetings %}
+                <div class="activity-card" onclick="window.location.href='{% url 'meeting_detail' meeting.id %}'">
+                    <div class="card-header">
+                        <div class="status-dot status-{{ meeting.status }}"></div>
+                        <span class="card-date">{{ meeting.created_at|date:"M d" }}</span>
+                    </div>
+                    <h3 class="card-title">{{ meeting.title }}</h3>
+                    <p class="card-subtitle">{{ meeting.created_at|date:"H:i" }}</p>
+                    {% if meeting.summary %}
+                    <p class="card-preview">{{ meeting.summary|truncatewords:12 }}</p>
+                    {% endif %}
+                    <div class="card-footer">
+                        <span class="status-badge status-{{ meeting.status }}">{{ meeting.status|capfirst }}</span>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="empty-state">
+                    <i class="fas fa-inbox"></i>
+                    <h3>No meetings yet</h3>
+                    <p>Upload your first meeting to get started</p>
+                    <a href="{% url 'upload_meeting' %}" class="btn btn-primary">Get Started</a>
+                </div>
+            {% endif %}
+        </div>
+    </section>
+
+    <!-- Benefits Section -->
+    <section class="benefits">
+        <div class="section-header">
+            <h2>Why Choose Meetingly?</h2>
+        </div>
+        <div class="benefits-grid">
+            <div class="benefit">
+                <div class="benefit-icon">
+                    <i class="fas fa-clock"></i>
+                </div>
+                <h3>Save Time</h3>
+                <p>Reduce meeting prep and follow-up time by 80%</p>
+            </div>
+            <div class="benefit">
+                <div class="benefit-icon">
+                    <i class="fas fa-accuracy"></i>
+                </div>
+                <h3>Stay Organized</h3>
+                <p>Never lose track of action items or decisions</p>
+            </div>
+            <div class="benefit">
+                <div class="benefit-icon">
+                    <i class="fas fa-users"></i>
+                </div>
+                <h3>Better Collaboration</h3>
+                <p>Keep everyone aligned with clear summaries</p>
+            </div>
+            <div class="benefit">
+                <div class="benefit-icon">
+                    <i class="fas fa-chart-line"></i>
+                </div>
+                <h3>Track Progress</h3>
+                <p>Monitor task completion and team productivity</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Quick Actions -->
+    <section class="quick-actions">
+        <div class="section-header">
+            <h2>Quick Actions</h2>
+        </div>
+        <div class="actions-grid">
+            <a href="{% url 'upload_meeting' %}" class="action-card">
+                <div class="action-icon">
+                    <i class="fas fa-cloud-upload-alt"></i>
+                </div>
+                <h3>Upload Audio</h3>
+                <p>Process meeting recordings</p>
+            </a>
+            <a href="{% url 'process_text_meeting' %}" class="action-card">
+                <div class="action-icon">
+                    <i class="fas fa-file-text"></i>
+                </div>
+                <h3>Process Text</h3>
+                <p>Analyze meeting transcripts</p>
+            </a>
+            <a href="{% url 'meeting_list' %}" class="action-card">
+                <div class="action-icon">
+                    <i class="fas fa-history"></i>
+                </div>
+                <h3>View History</h3>
+                <p>Browse past meetings</p>
+            </a>
+        </div>
+    </section>
+</div>
+{% endblock %}

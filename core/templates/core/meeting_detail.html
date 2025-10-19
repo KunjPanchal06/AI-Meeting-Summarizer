@@ -1,0 +1,109 @@
+{% extends 'core/base.html' %}
+
+{% block title %}{{ meeting.title }} - Meetingly{% endblock %}
+
+{% block content %}
+<div class="detail-page">
+    <div class="detail-header">
+        <div class="header-left">
+            <h1>{{ meeting.title }}</h1>
+            <div class="detail-meta">
+                <span><i class="fas fa-calendar"></i> {{ meeting.created_at|date:"F d, Y" }}</span>
+                <span><i class="fas fa-clock"></i> {{ meeting.created_at|date:"H:i" }}</span>
+            </div>
+        </div>
+        <div class="header-right">
+            <span class="status-badge status-{{ meeting.status }}">{{ meeting.status|capfirst }}</span>
+        </div>
+    </div>
+
+    {% if meeting.status == 'completed' %}
+    <div class="detail-content">
+        <div class="content-tabs">
+            <button class="tab-btn active" data-tab="summary">Summary</button>
+            <button class="tab-btn" data-tab="actions">Actions ({{ tasks.count }})</button>
+            <button class="tab-btn" data-tab="transcript">Transcript</button>
+        </div>
+
+        <div class="tab-content active" id="summary">
+            <div class="content-card">
+                <h3>Meeting Summary</h3>
+                <div class="summary-text">
+                    {{ meeting.summary|linebreaks }}
+                </div>
+            </div>
+        </div>
+
+        <div class="tab-content" id="actions">
+            {% if tasks %}
+                <div class="actions-list">
+                    {% for task in tasks %}
+                    <div class="action-item">
+                        <div class="action-check">
+                            <input type="checkbox" {% if task.status == 'completed' %}checked{% endif %}>
+                        </div>
+                        <div class="action-content">
+                            <h4>{{ task.description }}</h4>
+                            {% if task.assignee %}
+                            <span class="action-assignee">{{ task.assignee }}</span>
+                            {% endif %}
+                            {% if task.deadline_text %}
+                            <span class="action-deadline">{{ task.deadline_text }}</span>
+                            {% endif %}
+                        </div>
+                        <span class="status-badge status-{{ task.status }}">{{ task.status|capfirst }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="empty-state">
+                    <p>No action items found</p>
+                </div>
+            {% endif %}
+        </div>
+
+        <div class="tab-content" id="transcript">
+            <div class="content-card">
+                <h3>Full Transcript</h3>
+                <div class="transcript-text">
+                    {{ meeting.transcript|linebreaks }}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% elif meeting.status == 'processing' %}
+    <div class="processing-state">
+        <div class="processing-spinner"></div>
+        <h3>Processing meeting...</h3>
+        <p>This usually takes 2-5 minutes</p>
+    </div>
+
+    {% else %}
+    <div class="error-state">
+        <i class="fas fa-exclamation-triangle"></i>
+        <h3>Processing failed</h3>
+        <p>Please try uploading again</p>
+        <a href="{% url 'upload_meeting' %}" class="btn btn-primary">Try Again</a>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+// Tab functionality
+document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const tab = this.dataset.tab;
+        
+        document.querySelectorAll('.tab-btn, .tab-content').forEach(el => el.classList.remove('active'));
+        
+        this.classList.add('active');
+        document.getElementById(tab).classList.add('active');
+    });
+});
+
+{% if meeting.status == 'processing' %}
+setTimeout(() => location.reload(), 10000);
+{% endif %}
+</script>
+{% endblock %}

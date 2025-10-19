@@ -1,0 +1,12 @@
+Django==4.2.7
+djangorestframework==3.14.0
+openai-whisper==20231117
+torch==2.1.1
+transformers==4.35.2
+spacy==3.7.2
+python-multipart==0.0.6
+Pillow==10.1.0
+mysql-connector-python==8.2.0
+python-decouple==3.8
+librosa==0.10.1
+soundfile==0.12.1
