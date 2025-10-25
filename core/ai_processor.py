@@ -11,14 +11,23 @@ import re
 
 class MeetingAIProcessor:
     def __init__(self):
-        print("Initializing AI Processor (Lazy Mode)...")
+        print("Initializing lightweight AI Models...")
 
-        # Lazy load — don't load heavy models at startup
-        self.whisper_model = None
-        self.summarizer = None
-        self.nlp = None
+        # Whisper tiny model (~75MB vs 450MB for base)
+        self.whisper_model = whisper.load_model("tiny")
 
-        print("Models will load on first use (to save memory).")
+        # DistilBART summarizer (~300MB vs 1.2GB for bart-large)
+        self.summarizer = pipeline(
+            "summarization",
+            model="sshleifer/distilbart-cnn-12-6",
+            device=0 if torch.cuda.is_available() else -1
+        )
+
+        # Lightweight SpaCy English model
+        self.nlp = spacy.blank("en")
+        self.nlp.add_pipe("sentencizer")
+
+        print("Lightweight models loaded successfully!")
 
     # --------------------------------------------------
     # AUDIO TO TEXT
