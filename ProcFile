@@ -1,1 +1,1 @@
-web: gunicorn MeetingSummarizer.wsgi
+web: gunicorn meeting_summarizer.wsgi:application
