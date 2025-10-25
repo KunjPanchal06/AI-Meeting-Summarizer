@@ -18,31 +18,22 @@
                     <span>Meetingly</span>
                 </div>
             </div>
-            
+
             <div class="nav-menu">
                 <a href="{% url 'home' %}" class="nav-link {% if request.resolver_match.url_name == 'home' %}active{% endif %}">Dashboard</a>
                 <a href="{% url 'upload_meeting' %}" class="nav-link {% if request.resolver_match.url_name == 'upload_meeting' %}active{% endif %}">Upload</a>
                 <a href="{% url 'process_text_meeting' %}" class="nav-link {% if request.resolver_match.url_name == 'process_text_meeting' %}active{% endif %}">Process</a>
                 <a href="{% url 'meeting_list' %}" class="nav-link {% if request.resolver_match.url_name == 'meeting_list' %}active{% endif %}">Meetings</a>
             </div>
-            
+
             <div class="nav-actions">
-                <div class="search-container">
-                    <input type="search" placeholder="Search..." class="search-input">
-                    <i class="fas fa-search"></i>
-                </div>
-                <div class="user-menu" id="userMenu">
-                    <div class="user-avatar">
-                        <i class="fas fa-user"></i>
-                    </div>
-                    <span class="user-name">{{ user.first_name|default:'User' }}</span>
-                    <i class="fas fa-chevron-down"></i>
-                    <div class="dropdown" id="userDropdown">
-                        <a href="#"><i class="fas fa-user"></i> Profile</a>
-                        <a href="#"><i class="fas fa-cog"></i> Settings</a>
-                        <a href="#"><i class="fas fa-sign-out-alt"></i> Logout</a>
-                    </div>
-                </div>
+                {% if user.is_authenticated %}
+                    <span class="user-greet">Hi, {{ user.first_name|default:user.username }}</span>
+                    <a href="{% url 'logout' %}" class="btn btn-secondary">Logout</a>
+                {% else %}
+                    <a href="{% url 'login' %}" class="btn btn-secondary">Login</a>
+                    <a href="{% url 'signup' %}" class="btn btn-primary">Sign Up</a>
+                {% endif %}
             </div>
         </nav>
     </header>

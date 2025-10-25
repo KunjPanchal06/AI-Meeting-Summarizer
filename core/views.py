@@ -1,17 +1,16 @@
-# core/views.py
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.http import JsonResponse
 from django.conf import settings
+from django.contrib.auth.decorators import login_required
 import os
 
 from .models import Meeting, Task
-from .ai_processor import MeetingAIProcessor  # 🔹 Added
+from .ai_processor import MeetingAIProcessor 
 
-# 🔹 Initialize AI model once globally (only when needed)
 ai_processor = MeetingAIProcessor()
 
-
+@login_required(login_url='login')
 def home(request):
     recent_meetings = Meeting.objects.filter(user=request.user).order_by('-created_at')[:5] if request.user.is_authenticated else []
     context = {
@@ -22,7 +21,7 @@ def home(request):
     }
     return render(request, 'core/home.html', context)
 
-
+@login_required(login_url='login')
 def upload_meeting(request):
     if request.method == 'POST':
         title = request.POST.get('title')
@@ -37,10 +36,10 @@ def upload_meeting(request):
                     user=request.user if request.user.is_authenticated else None
                 )
 
-                # 🔹 Full file path
+                # Full file path
                 audio_path = os.path.join(settings.MEDIA_ROOT, str(meeting.audio_file))
 
-                # 🔹 Run AI processing
+                # Run AI processing
                 transcript, summary, action_items = ai_processor.process_meeting(audio_path)
 
                 if not transcript:
@@ -49,13 +48,13 @@ def upload_meeting(request):
                     messages.error(request, f'Failed to process "{title}". Please try again.')
                     return redirect('meeting_detail', meeting_id=meeting.id)
 
-                # 🔹 Save results
+                # Save results
                 meeting.transcript = transcript
                 meeting.summary = summary
                 meeting.status = 'completed'
                 meeting.save()
 
-                # 🔹 Save extracted tasks
+                # Save extracted tasks
                 for item in action_items:
                     Task.objects.create(
                         meeting=meeting,
@@ -76,7 +75,7 @@ def upload_meeting(request):
 
     return render(request, 'core/upload.html')
 
-
+@login_required(login_url='login')
 def process_text_meeting(request):
     if request.method == 'POST':
         title = request.POST.get('title')
@@ -91,14 +90,14 @@ def process_text_meeting(request):
                     user=request.user if request.user.is_authenticated else None
                 )
 
-                # 🔹 Use AI processor for text input
+                # Use AI processor for text input
                 transcript, summary, action_items = ai_processor.process_text_only(meeting_text)
 
                 meeting.summary = summary
                 meeting.status = 'completed'
                 meeting.save()
 
-                # 🔹 Add tasks
+                # Add tasks
                 for item in action_items:
                     Task.objects.create(
                         meeting=meeting,
@@ -119,22 +118,15 @@ def process_text_meeting(request):
 
     return render(request, 'core/process_text.html')
 
-
+@login_required(login_url='login')
 def meeting_list(request):
-    """
-    List all meetings or only AI-processed meetings if ?ai=true is in URL.
-    """
-    meetings = Meeting.objects.none()
+    meetings = Meeting.objects.filter(user=request.user).order_by('-created_at')
 
-    if request.user.is_authenticated:
-        meetings = Meeting.objects.filter(user=request.user).order_by('-created_at')
-
-        if request.GET.get('ai') == 'true':
-            # Only show meetings that have a summary (i.e., AI processed)
-            meetings = meetings.exclude(summary__isnull=True).exclude(summary__exact='')
+    if request.GET.get('ai') == 'true':
+        # Only show meetings that have a summary (i.e., AI processed)
+        meetings = meetings.exclude(summary__isnull=True).exclude(summary__exact='')
 
     return render(request, 'core/meeting_list.html', {'meetings': meetings})
-
 
 def meeting_detail(request, meeting_id):
     meeting = get_object_or_404(Meeting, id=meeting_id)

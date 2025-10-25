@@ -13,7 +13,7 @@ class Meeting(models.Model):
     audio_file = models.FileField(upload_to='meetings/', null=True, blank=True)
     transcript = models.TextField(blank=True)
     summary = models.TextField(blank=True)
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='processing')  # Add this field
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='processing')  
     user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
