@@ -23,6 +23,7 @@
             <button class="tab-btn active" data-tab="summary">Summary</button>
             <button class="tab-btn" data-tab="actions">Actions ({{ tasks.count }})</button>
             <button class="tab-btn" data-tab="transcript">Transcript</button>
+            <button class="tab-btn tab-btn-ai" data-tab="ask-ai"><i class="fas fa-robot"></i> Ask AI</button>
         </div>
 
         <div class="tab-content active" id="summary">
@@ -70,6 +71,43 @@
                 </div>
             </div>
         </div>
+
+        <!-- Ask AI Tab -->
+        <div class="tab-content" id="ask-ai">
+            <div class="qa-container">
+                <div class="qa-header">
+                    <div class="qa-header-icon"><i class="fas fa-robot"></i></div>
+                    <div>
+                        <h3>Ask AI about this meeting</h3>
+                        <p>Ask any question and get answers based on the meeting content</p>
+                    </div>
+                </div>
+
+                <div class="qa-messages" id="qa-messages">
+                    <div class="qa-welcome">
+                        <div class="qa-welcome-icon"><i class="fas fa-comments"></i></div>
+                        <h4>Start a conversation</h4>
+                        <p>Try asking questions like:</p>
+                        <div class="qa-suggestions">
+                            <button class="qa-suggestion" onclick="askSuggestion(this)">What were the main topics discussed?</button>
+                            <button class="qa-suggestion" onclick="askSuggestion(this)">Who was assigned action items?</button>
+                            <button class="qa-suggestion" onclick="askSuggestion(this)">What decisions were made?</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="qa-input-area">
+                    <div class="qa-input-wrapper">
+                        <input type="text" id="qa-input" class="qa-input" 
+                               placeholder="Ask a question about this meeting..." 
+                               autocomplete="off">
+                        <button id="qa-send" class="qa-send-btn" onclick="sendQuestion()">
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     {% elif meeting.status == 'processing' %}
@@ -104,6 +142,128 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
 
 {% if meeting.status == 'processing' %}
 setTimeout(() => location.reload(), 10000);
+{% endif %}
+
+{% if meeting.status == 'completed' %}
+// Q&A functionality
+const qaMessages = document.getElementById('qa-messages');
+const qaInput = document.getElementById('qa-input');
+const qaSendBtn = document.getElementById('qa-send');
+const askUrl = "{% url 'ask_question' meeting.id %}";
+const csrfToken = "{{ csrf_token }}";
+
+qaInput.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendQuestion();
+    }
+});
+
+function askSuggestion(btn) {
+    qaInput.value = btn.textContent;
+    sendQuestion();
+}
+
+function sendQuestion() {
+    const question = qaInput.value.trim();
+    if (!question) return;
+
+    // Remove welcome message
+    const welcome = qaMessages.querySelector('.qa-welcome');
+    if (welcome) welcome.remove();
+
+    // Add user message
+    addMessage(question, 'user');
+    qaInput.value = '';
+
+    // Add loading indicator
+    const loadingId = 'loading-' + Date.now();
+    addLoading(loadingId);
+
+    // Disable input while processing
+    qaInput.disabled = true;
+    qaSendBtn.disabled = true;
+
+    fetch(askUrl, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken,
+        },
+        body: JSON.stringify({ question: question }),
+    })
+    .then(res => res.json())
+    .then(data => {
+        removeLoading(loadingId);
+        if (data.error) {
+            addMessage(data.error, 'error');
+        } else {
+            addMessage(data.answer, 'ai', data.sources);
+        }
+    })
+    .catch(err => {
+        removeLoading(loadingId);
+        addMessage('Something went wrong. Please try again.', 'error');
+    })
+    .finally(() => {
+        qaInput.disabled = false;
+        qaSendBtn.disabled = false;
+        qaInput.focus();
+    });
+}
+
+function addMessage(text, type, sources) {
+    const msg = document.createElement('div');
+    msg.className = 'qa-message qa-message-' + type;
+
+    let icon = '';
+    if (type === 'user') {
+        icon = '<div class="qa-msg-avatar qa-avatar-user"><i class="fas fa-user"></i></div>';
+    } else if (type === 'ai') {
+        icon = '<div class="qa-msg-avatar qa-avatar-ai"><i class="fas fa-robot"></i></div>';
+    } else {
+        icon = '<div class="qa-msg-avatar qa-avatar-error"><i class="fas fa-exclamation"></i></div>';
+    }
+
+    let sourcesHtml = '';
+    if (sources && sources.length > 0) {
+        sourcesHtml = '<div class="qa-sources"><div class="qa-sources-title"><i class="fas fa-quote-left"></i> Sources from meeting</div>';
+        sources.forEach(s => {
+            sourcesHtml += `<div class="qa-source-item"><p>${escapeHtml(s.text)}</p><span class="qa-relevance">${s.relevance}% relevant</span></div>`;
+        });
+        sourcesHtml += '</div>';
+    }
+
+    msg.innerHTML = `${icon}<div class="qa-msg-content"><div class="qa-msg-text">${escapeHtml(text)}</div>${sourcesHtml}</div>`;
+    qaMessages.appendChild(msg);
+    qaMessages.scrollTop = qaMessages.scrollHeight;
+}
+
+function addLoading(id) {
+    const loader = document.createElement('div');
+    loader.id = id;
+    loader.className = 'qa-message qa-message-ai';
+    loader.innerHTML = `
+        <div class="qa-msg-avatar qa-avatar-ai"><i class="fas fa-robot"></i></div>
+        <div class="qa-msg-content">
+            <div class="qa-typing">
+                <span></span><span></span><span></span>
+            </div>
+        </div>`;
+    qaMessages.appendChild(loader);
+    qaMessages.scrollTop = qaMessages.scrollHeight;
+}
+
+function removeLoading(id) {
+    const el = document.getElementById(id);
+    if (el) el.remove();
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
 {% endif %}
 </script>
 {% endblock %}

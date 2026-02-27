@@ -39,13 +39,13 @@ class MeetingAIProcessor:
         try:
             print("Generating Summary")
             if len(text.split()) < 50:
-                return "Text to short to summarize it."
+                return "Text too short to summarize."
 
-            max_chunk = 1024
+            max_chunk = 512  # words (~700 tokens), safe for BART's 1024-token limit
             words = text.split()
 
             if len(words) <= max_chunk:
-                summary = self.summarizer(text, max_length = 150, min_length = 50, do_sample = False)[0]['summary_text']
+                summary = self.summarizer(text, max_length=150, min_length=30, do_sample=False, truncation=True)[0]['summary_text']
             else:
                 chunks = []
                 for i in range(0, len(words), max_chunk):
@@ -54,13 +54,13 @@ class MeetingAIProcessor:
             
                 summaries = []
                 for chunk in chunks:
-                    chunk_summary = self.summarizer(chunk, max_length=100, min_length=30, do_sample=False)[0]['summary_text']
+                    chunk_summary = self.summarizer(chunk, max_length=100, min_length=20, do_sample=False, truncation=True)[0]['summary_text']
                     summaries.append(chunk_summary)
             
                 combined_summary = ' '.join(summaries)
     
                 if len(combined_summary.split()) > 100:
-                    summary = self.summarizer(combined_summary, max_length=200, min_length=75, do_sample=False)[0]['summary_text']
+                    summary = self.summarizer(combined_summary, max_length=200, min_length=50, do_sample=False, truncation=True)[0]['summary_text']
                 else:
                     summary = combined_summary
         
@@ -69,6 +69,8 @@ class MeetingAIProcessor:
         
         except Exception as e:
             print(f"Error in summarization: {str(e)}")
+            import traceback
+            traceback.print_exc()
             return "Error generating summary."
         
     def extract_action_items(self, text):

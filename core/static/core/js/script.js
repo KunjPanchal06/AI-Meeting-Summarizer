@@ -1,4 +1,3 @@
-// Fresh Minimalistic JavaScript - Bug-Free
 document.addEventListener('DOMContentLoaded', function() {
     
     // User menu dropdown

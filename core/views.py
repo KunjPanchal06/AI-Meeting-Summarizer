@@ -3,12 +3,29 @@ from django.contrib import messages
 from django.http import JsonResponse
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
+from django.views.decorators.http import require_POST
+import json
 import os
 
 from .models import Meeting, Task
 from .ai_processor import MeetingAIProcessor 
 
-ai_processor = MeetingAIProcessor()
+# Lazy-load AI processors (only initialized when first used)
+_ai_processor = None
+_rag_processor = None
+
+def get_ai_processor():
+    global _ai_processor
+    if _ai_processor is None:
+        _ai_processor = MeetingAIProcessor()
+    return _ai_processor
+
+def get_rag_processor():
+    global _rag_processor
+    if _rag_processor is None:
+        from .rag_processor import MeetingRAGProcessor
+        _rag_processor = MeetingRAGProcessor()
+    return _rag_processor
 
 @login_required(login_url='login')
 def home(request):
@@ -40,7 +57,7 @@ def upload_meeting(request):
                 audio_path = os.path.join(settings.MEDIA_ROOT, str(meeting.audio_file))
 
                 # Run AI processing
-                transcript, summary, action_items = ai_processor.process_meeting(audio_path)
+                transcript, summary, action_items = get_ai_processor().process_meeting(audio_path)
 
                 if not transcript:
                     meeting.status = 'failed'
@@ -91,7 +108,7 @@ def process_text_meeting(request):
                 )
 
                 # Use AI processor for text input
-                transcript, summary, action_items = ai_processor.process_text_only(meeting_text)
+                transcript, summary, action_items = get_ai_processor().process_text_only(meeting_text)
 
                 meeting.summary = summary
                 meeting.status = 'completed'
@@ -132,3 +149,29 @@ def meeting_detail(request, meeting_id):
     meeting = get_object_or_404(Meeting, id=meeting_id)
     tasks = Task.objects.filter(meeting=meeting)
     return render(request, 'core/meeting_detail.html', {'meeting': meeting, 'tasks': tasks})
+
+
+@login_required(login_url='login')
+@require_POST
+def ask_question(request, meeting_id):
+    """RAG-powered Q&A endpoint for a specific meeting."""
+    meeting = get_object_or_404(Meeting, id=meeting_id, user=request.user)
+
+    if meeting.status != 'completed':
+        return JsonResponse({'error': 'Meeting has not been processed yet.'}, status=400)
+
+    try:
+        data = json.loads(request.body)
+        question = data.get('question', '').strip()
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Invalid request body.'}, status=400)
+
+    if not question:
+        return JsonResponse({'error': 'Please enter a question.'}, status=400)
+
+    try:
+        rag = get_rag_processor()
+        result = rag.ask_question(meeting.transcript, meeting.summary, question)
+        return JsonResponse(result)
+    except Exception as e:
+        return JsonResponse({'error': f'Error generating answer: {str(e)}'}, status=500)

@@ -150,3 +150,6 @@ DATABASES['default'] = dj_database_url.config(
     default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}",
     conn_max_age=600
 )
+
+# Groq API Key for RAG Q&A feature
+GROQ_API_KEY = os.environ.get('GROQ_API_KEY', '')
