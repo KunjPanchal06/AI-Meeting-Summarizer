@@ -125,8 +125,7 @@
                 </div>
 
                 <!-- Summary text -->
-                <div
-                    style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:28px 32px;box-shadow:var(--shadow-sm);">
+                <div class="card" style="border-color:transparent;padding:28px 32px;box-shadow:var(--shadow);">
                     <div style="font-size:15px;line-height:1.85;color:var(--text);white-space:pre-wrap;">{{ meeting.summary }}</div>
                 </div>
             </div>
@@ -162,8 +161,7 @@
                 </div>
 
                 {% if tasks %}
-                <div
-                    style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;box-shadow:var(--shadow-sm);">
+                <div class="card" style="border-color:transparent;overflow:hidden;box-shadow:var(--shadow);">
                     {% for task in tasks %}
                     <div class="task-item {% if task.status == 'completed' %}completed{% endif %}"
                         id="task-row-{{ task.id }}" style="padding:14px 20px;">
@@ -243,8 +241,7 @@
                     </div>
                 </div>
                 {% if meeting.transcript %}
-                <div
-                    style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:24px 28px;box-shadow:var(--shadow-sm);">
+                <div class="card" style="border-color:transparent;padding:24px 28px;box-shadow:var(--shadow);">
                     <pre class="transcript-body">{{ meeting.transcript }}</pre>
                 </div>
                 {% else %}
@@ -262,7 +259,8 @@
 
         <!-- ── TAB: ASK AI ───────────────────────────── -->
         <div class="tab-content" id="tab-ask-ai" style="display:none;padding-top:20px;">
-            <div style="max-width:720px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);box-shadow:var(--shadow-sm);overflow:hidden;display:flex;flex-direction:column;"
+            <div class="card"
+                style="max-width:720px;border-color:transparent;box-shadow:var(--shadow);overflow:hidden;display:flex;flex-direction:column;"
                 id="chatContainer">
 
                 <!-- Chat Header -->
