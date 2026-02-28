@@ -1,39 +1,125 @@
 {% extends 'core/base.html' %}
-
-{% block title %}Process Text - Meetingly{% endblock %}
+{% block title %}Process Text — Meetingly{% endblock %}
+{% block breadcrumb %}Process Text{% endblock %}
 
 {% block content %}
-<div class="process-page">
-    <div class="page-header">
-        <h1>Process Meeting Text</h1>
-        <p>Paste your meeting transcript for AI analysis</p>
+<div class="fade-in" style="padding:28px 32px;max-width:800px;">
+
+    <!-- Page Header -->
+    <div style="margin-bottom:28px;">
+        <h1 style="font-size:22px;font-weight:700;letter-spacing:-0.4px;color:var(--text);margin-bottom:4px;">Process
+            Meeting Text</h1>
+        <p style="font-size:14px;color:var(--text-muted);">Paste or type a meeting transcript and get an AI-generated
+            summary with action items.</p>
     </div>
 
-    <div class="process-container">
-        <form method="post" class="process-form">
+    <div class="card" style="padding:28px;">
+        <form method="post" id="processForm">
             {% csrf_token %}
-            
-            <div class="form-group">
-                <label class="form-label">Meeting Title</label>
-                <input type="text" name="title" class="form-input" placeholder="Enter meeting title" required>
+
+            <!-- Meeting Title -->
+            <div style="margin-bottom:20px;">
+                <label class="form-label">Meeting Title <span style="color:var(--red);">*</span></label>
+                <input type="text" name="title" class="form-input" placeholder="e.g. Design Review — March Sprint"
+                    required autofocus id="meetingTitle">
             </div>
 
-            <div class="form-group">
-                <label class="form-label">Meeting Transcript</label>
-                <textarea name="meeting_text" class="form-textarea" placeholder="Paste your meeting transcript here..." rows="15" required></textarea>
-                <div class="textarea-footer">
-                    <span class="word-count" id="wordCount">0 words</span>
+            <!-- Transcript Textarea -->
+            <div style="margin-bottom:24px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+                    <label class="form-label" style="margin-bottom:0;">Meeting Transcript <span
+                            style="color:var(--red);">*</span></label>
+                    <span id="wordCount" style="font-size:12px;color:var(--text-subtle);">0 words</span>
+                </div>
+
+                <textarea name="meeting_text" id="transcriptText" class="form-textarea" placeholder="Paste your meeting transcript here…
+
+Example:
+John: Let's discuss the Q2 roadmap. We need to finalize the API design by Friday.
+Sarah: I'll handle the frontend integration. Can we schedule a code review on Thursday?
+John: Sounds good. Also, we need to update the docs before the release." rows="16" required
+                    style="min-height:340px;font-size:14px;line-height:1.75;resize:vertical;"></textarea>
+
+                <!-- Footer bar -->
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px;">
+                    <span style="font-size:12px;color:var(--text-subtle);" id="charCount">0 characters</span>
+                    <button type="button" id="clearBtn" onclick="clearText()"
+                        style="font-size:12px;color:var(--text-subtle);background:none;border:none;cursor:pointer;font-family:inherit;padding:2px 6px;border-radius:4px;"
+                        onmouseover="this.style.color='var(--red)'"
+                        onmouseout="this.style.color='var(--text-subtle)'">Clear</button>
                 </div>
             </div>
 
-            <div class="form-actions">
-                <button type="submit" class="btn btn-primary">
-                    <i class="fas fa-brain"></i>
-                    Analyze Text
+            <!-- Actions -->
+            <div style="display:flex;gap:10px;align-items:center;">
+                <button type="submit" class="btn btn-primary" style="padding:10px 20px;" id="analyzeBtn">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path
+                            d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+                        <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+                        <line x1="12" y1="22.08" x2="12" y2="12" />
+                    </svg>
+                    Analyze with AI
                 </button>
-                <a href="{% url 'home' %}" class="btn btn-secondary">Cancel</a>
+                <a href="{% url 'home' %}" class="btn btn-ghost">Cancel</a>
             </div>
+
         </form>
     </div>
+
+    <!-- Tips card -->
+    <div
+        style="margin-top:20px;padding:16px 20px;background:var(--accent-light);border-radius:var(--radius);border:1px solid rgba(79,70,229,0.15);">
+        <div
+            style="font-size:12.5px;font-weight:600;color:var(--accent);margin-bottom:10px;display:flex;align-items:center;gap:6px;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10" />
+                <line x1="12" y1="8" x2="12" y2="12" />
+                <line x1="12" y1="16" x2="12.01" y2="16" />
+            </svg>
+            Tips for better results
+        </div>
+        <ul style="list-style:none;display:flex;flex-direction:column;gap:6px;">
+            <li style="font-size:12.5px;color:var(--accent);opacity:0.85;display:flex;align-items:flex-start;gap:6px;">
+                <span>→</span> Include speaker names (e.g. "John: I'll submit the PR tomorrow.")</li>
+            <li style="font-size:12.5px;color:var(--accent);opacity:0.85;display:flex;align-items:flex-start;gap:6px;">
+                <span>→</span> Longer transcripts (300+ words) produce richer summaries</li>
+            <li style="font-size:12.5px;color:var(--accent);opacity:0.85;display:flex;align-items:flex-start;gap:6px;">
+                <span>→</span> Mention explicit deadlines so tasks can be extracted accurately</li>
+        </ul>
+    </div>
+
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const textarea = document.getElementById('transcriptText');
+    const wordCount = document.getElementById('wordCount');
+    const charCount = document.getElementById('charCount');
+
+    function updateCount() {
+        const text = textarea.value.trim();
+        const words = text ? text.split(/\s+/).length : 0;
+        wordCount.textContent = words + ' word' + (words !== 1 ? 's' : '');
+        charCount.textContent = textarea.value.length + ' characters';
+    }
+
+    function clearText() {
+        textarea.value = '';
+        updateCount();
+        textarea.focus();
+    }
+
+    textarea.addEventListener('input', updateCount);
+    updateCount();
+
+    document.getElementById('processForm').addEventListener('submit', function () {
+        const btn = document.getElementById('analyzeBtn');
+        btn.innerHTML = `<svg class="spin" xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"/><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"/><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"/></svg> Analyzing…`;
+        btn.disabled = true;
+    });
+</script>
 {% endblock %}

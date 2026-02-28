@@ -1,219 +1,180 @@
 {% extends 'core/base.html' %}
-
-{% block title %}Dashboard - Meetingly{% endblock %}
+{% block title %}Dashboard — Meetingly{% endblock %}
+{% block breadcrumb %}Dashboard{% endblock %}
 
 {% block content %}
-<div class="homepage">
-    <!-- Hero Section -->
-    <section class="hero">
-        <div class="hero-content">
-            <h1 class="hero-title">Transform Meetings with AI</h1>
-            <p class="hero-subtitle">Automatically convert meeting recordings into summaries, action items, and
-                insights. Save hours every week with intelligent automation.</p>
-            <div class="hero-buttons">
-                <a href="{% url 'upload_meeting' %}" class="btn btn-primary">
-                    <i class="fas fa-upload"></i>
-                    Upload Meeting
-                </a>
-                <a href="{% url 'process_text_meeting' %}" class="btn btn-secondary">
-                    <i class="fas fa-edit"></i>
-                    Process Text
-                </a>
-            </div>
-        </div>
-        <div class="hero-stats">
-            <div class="stat">
-                <div class="stat-number">{{ total_meetings|default:'0' }}</div>
-                <div class="stat-label">Meetings Processed</div>
-            </div>
-            <div class="stat">
-                <div class="stat-number">{{ completed_tasks|default:'0' }}</div>
-                <div class="stat-label">Tasks Completed</div>
-            </div>
-            <div class="stat">
-                <div class="stat-number">{{ total_tasks|default:'0' }}</div>
-                <div class="stat-label">Total Tasks</div>
-            </div>
-        </div>
-    </section>
+<div class="fade-in" style="padding:28px 32px;max-width:1200px;">
 
-    <!-- Features Section -->
-    <section class="features">
-        <div class="section-header">
-            <h2>Powerful Features</h2>
-            <p>Everything you need to make meetings more productive</p>
-        </div>
-        <div class="features-grid">
-            <div class="feature">
-                <div class="feature-icon">
-                    <i class="fas fa-microphone"></i>
-                </div>
-                <h3>Audio Transcription</h3>
-                <p>Convert speech to text with 98% accuracy. Support for multiple languages and file formats.</p>
-                <ul class="feature-list">
-                    <li>Multi-language support</li>
-                    <li>Speaker identification</li>
-                    <li>Noise reduction</li>
-                </ul>
-            </div>
-            <div class="feature">
-                <div class="feature-icon">
-                    <i class="fas fa-brain"></i>
-                </div>
-                <h3>AI Summarization</h3>
-                <p>Get concise summaries highlighting key decisions, outcomes, and important discussions.</p>
-                <ul class="feature-list">
-                    <li>Key point extraction</li>
-                    <li>Decision tracking</li>
-                    <li>Topic categorization</li>
-                </ul>
-            </div>
-            <div class="feature">
-                <div class="feature-icon">
-                    <i class="fas fa-tasks"></i>
-                </div>
-                <h3>Action Items</h3>
-                <p>Automatically identify tasks, assignments, and deadlines from meeting conversations.</p>
-                <ul class="feature-list">
-                    <li>Task assignment</li>
-                    <li>Deadline tracking</li>
-                    <li>Progress monitoring</li>
-                </ul>
-            </div>
-        </div>
-    </section>
+    <!-- Greeting Header -->
+    <div style="margin-bottom:28px;">
+        <h1 style="font-size:26px;font-weight:700;letter-spacing:-0.5px;color:var(--text);margin-bottom:4px;">Good work,
+            {{ user.first_name|default:user.username }} 👋</h1>
+        <p style="font-size:14px;color:var(--text-muted);">Here's an overview of your meeting workspace.</p>
+    </div>
 
-    <!-- How It Works -->
-    <section class="how-it-works">
-        <div class="section-header">
-            <h2>How It Works</h2>
-            <p>Simple 3-step process to transform your meetings</p>
-        </div>
-        <div class="steps">
-            <div class="step">
-                <div class="step-number">1</div>
-                <div class="step-content">
-                    <h3>Upload or Process</h3>
-                    <p>Upload audio files or paste text transcripts from your meetings</p>
-                </div>
-            </div>
-            <div class="step">
-                <div class="step-number">2</div>
-                <div class="step-content">
-                    <h3>AI Analysis</h3>
-                    <p>Our AI processes content to extract key insights and action items</p>
-                </div>
-            </div>
-            <div class="step">
-                <div class="step-number">3</div>
-                <div class="step-content">
-                    <h3>Get Results</h3>
-                    <p>Receive organized summaries, tasks, and actionable insights</p>
-                </div>
-            </div>
-        </div>
-    </section>
+    <!-- Stats Row -->
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:32px;">
 
-    <!-- Recent Activity -->
-    <section class="recent-activity">
-        <div class="section-header">
-            <h2>Recent Activity</h2>
-            <a href="{% url 'meeting_list' %}" class="view-all">View All</a>
-        </div>
-        <div class="activity-grid">
-            {% if recent_meetings %}
-            {% for meeting in recent_meetings %}
-            <div class="activity-card" onclick="window.location.href='{% url 'meeting_detail' meeting.id %}'">
-                <div class="card-header">
-                    <div class="status-dot status-{{ meeting.status }}"></div>
-                    <span class="card-date">{{ meeting.created_at|date:"M d" }}</span>
+        <!-- Meetings Processed -->
+        <div class="stat-card">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+                <div
+                    style="width:38px;height:38px;border-radius:10px;background:var(--accent-light);display:flex;align-items:center;justify-content:center;color:var(--accent);">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                        <polyline points="14 2 14 8 20 8" />
+                    </svg>
                 </div>
-                <h3 class="card-title">{{ meeting.title }}</h3>
-                <p class="card-subtitle">{{ meeting.created_at|date:"H:i" }}</p>
-                {% if meeting.summary %}
-                <p class="card-preview">{{ meeting.summary|truncatewords:12 }}</p>
-                {% endif %}
-                <div class="card-footer">
-                    <span class="status-badge status-{{ meeting.status }}">{{ meeting.status|capfirst }}</span>
-                </div>
+                <span class="badge badge-completed" style="font-size:10.5px;">Total</span>
             </div>
-            {% endfor %}
-            {% else %}
-            <div class="empty-state">
-                <i class="fas fa-inbox"></i>
-                <h3>No meetings yet</h3>
-                <p>Upload your first meeting to get started</p>
-                <a href="{% url 'upload_meeting' %}" class="btn btn-primary">Get Started</a>
-            </div>
-            {% endif %}
+            <div style="font-size:32px;font-weight:700;color:var(--text);letter-spacing:-1px;margin-bottom:4px;">{{ total_meetings }}</div>
+            <div style="font-size:13px;color:var(--text-muted);">Meetings analyzed</div>
         </div>
-    </section>
 
-    <!-- Benefits Section -->
-    <section class="benefits">
-        <div class="section-header">
-            <h2>Why Choose Meetingly?</h2>
+        <!-- Tasks Completed -->
+        <div class="stat-card">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+                <div
+                    style="width:38px;height:38px;border-radius:10px;background:#D1FAE5;display:flex;align-items:center;justify-content:center;color:var(--green);">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="9 11 12 14 22 4" />
+                        <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+                    </svg>
+                </div>
+                <span class="badge badge-completed" style="font-size:10.5px;">Done</span>
+            </div>
+            <div style="font-size:32px;font-weight:700;color:var(--text);letter-spacing:-1px;margin-bottom:4px;">{{ completed_tasks }}</div>
+            <div style="font-size:13px;color:var(--text-muted);">Tasks completed</div>
         </div>
-        <div class="benefits-grid">
-            <div class="benefit">
-                <div class="benefit-icon">
-                    <i class="fas fa-clock"></i>
+
+        <!-- Total Tasks -->
+        <div class="stat-card">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+                <div
+                    style="width:38px;height:38px;border-radius:10px;background:var(--yellow-light);display:flex;align-items:center;justify-content:center;color:var(--yellow);">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10" />
+                        <polyline points="12 6 12 12 16 14" />
+                    </svg>
                 </div>
-                <h3>Save Time</h3>
-                <p>Reduce meeting prep and follow-up time by 80%</p>
+                <span class="badge badge-pending" style="font-size:10.5px;">Open</span>
             </div>
-            <div class="benefit">
-                <div class="benefit-icon">
-                    <i class="fas fa-accuracy"></i>
-                </div>
-                <h3>Stay Organized</h3>
-                <p>Never lose track of action items or decisions</p>
-            </div>
-            <div class="benefit">
-                <div class="benefit-icon">
-                    <i class="fas fa-users"></i>
-                </div>
-                <h3>Better Collaboration</h3>
-                <p>Keep everyone aligned with clear summaries</p>
-            </div>
-            <div class="benefit">
-                <div class="benefit-icon">
-                    <i class="fas fa-chart-line"></i>
-                </div>
-                <h3>Track Progress</h3>
-                <p>Monitor task completion and team productivity</p>
-            </div>
+            <div style="font-size:32px;font-weight:700;color:var(--text);letter-spacing:-1px;margin-bottom:4px;">{{ total_tasks }}</div>
+            <div style="font-size:13px;color:var(--text-muted);">Total tasks tracked</div>
         </div>
-    </section>
+
+    </div>
 
     <!-- Quick Actions -->
-    <section class="quick-actions">
-        <div class="section-header">
-            <h2>Quick Actions</h2>
+    <div style="margin-bottom:32px;">
+        <h2 style="font-size:15px;font-weight:600;color:var(--text);margin-bottom:14px;">Quick Actions</h2>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;">
+            <a href="{% url 'upload_meeting' %}" class="btn btn-primary" style="padding:10px 18px;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="16 16 12 12 8 16" />
+                    <line x1="12" y1="12" x2="12" y2="21" />
+                    <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3" />
+                </svg>
+                Upload Audio
+            </a>
+            <a href="{% url 'process_text_meeting' %}" class="btn btn-secondary" style="padding:10px 18px;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="17" y1="10" x2="3" y2="10" />
+                    <line x1="21" y1="6" x2="3" y2="6" />
+                    <line x1="21" y1="14" x2="3" y2="14" />
+                    <line x1="17" y1="18" x2="3" y2="18" />
+                </svg>
+                Process Text
+            </a>
+            <a href="{% url 'meeting_list' %}" class="btn btn-secondary" style="padding:10px 18px;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                </svg>
+                All Meetings
+            </a>
         </div>
-        <div class="actions-grid">
-            <a href="{% url 'upload_meeting' %}" class="action-card">
-                <div class="action-icon">
-                    <i class="fas fa-cloud-upload-alt"></i>
-                </div>
-                <h3>Upload Audio</h3>
-                <p>Process meeting recordings</p>
-            </a>
-            <a href="{% url 'process_text_meeting' %}" class="action-card">
-                <div class="action-icon">
-                    <i class="fas fa-file-text"></i>
-                </div>
-                <h3>Process Text</h3>
-                <p>Analyze meeting transcripts</p>
-            </a>
-            <a href="{% url 'meeting_list' %}" class="action-card">
-                <div class="action-icon">
-                    <i class="fas fa-history"></i>
-                </div>
-                <h3>View History</h3>
-                <p>Browse past meetings</p>
-            </a>
+    </div>
+
+    <!-- Recent Meetings -->
+    <div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+            <h2 style="font-size:15px;font-weight:600;color:var(--text);">Recent Meetings</h2>
+            <a href="{% url 'meeting_list' %}"
+                style="font-size:13px;color:var(--accent);text-decoration:none;font-weight:500;">View all →</a>
         </div>
-    </section>
+
+        {% if recent_meetings %}
+        <div class="card" style="overflow:hidden;">
+            <table style="width:100%;border-collapse:collapse;">
+                <thead>
+                    <tr style="border-bottom:1px solid var(--border);">
+                        <th
+                            style="text-align:left;padding:12px 16px;font-size:11.5px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-subtle);">
+                            Meeting</th>
+                        <th
+                            style="text-align:left;padding:12px 16px;font-size:11.5px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-subtle);">
+                            Date</th>
+                        <th
+                            style="text-align:left;padding:12px 16px;font-size:11.5px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-subtle);">
+                            Status</th>
+                        <th style="padding:12px 16px;"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for meeting in recent_meetings %}
+                    <tr style="border-bottom:1px solid var(--border);cursor:pointer;transition:background var(--transition);"
+                        onclick="window.location.href='{% url 'meeting_detail' meeting.id %}'"
+                        onmouseover="this.style.background='var(--surface-2)'" onmouseout="this.style.background=''">
+                        <td style="padding:14px 16px;">
+                            <div style="font-size:14px;font-weight:500;color:var(--text);margin-bottom:2px;">{{ meeting.title }}</div>
+                            {% if meeting.summary %}<div
+                                style="font-size:12.5px;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:340px;">
+                                {{ meeting.summary|truncatewords:10 }}</div>{% endif %}
+                        </td>
+                        <td style="padding:14px 16px;font-size:13px;color:var(--text-muted);white-space:nowrap;">{{ meeting.created_at|date:"M d, Y" }}</td>
+                        <td style="padding:14px 16px;">
+                            <span class="badge badge-{{ meeting.status }}">
+                                <span class="badge-dot"></span>
+                                {{ meeting.status|capfirst }}
+                            </span>
+                        </td>
+                        <td style="padding:14px 16px;text-align:right;">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                stroke-linejoin="round" style="color:var(--text-subtle);">
+                                <polyline points="9 18 15 12 9 6" />
+                            </svg>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {% else %}
+        <div class="card">
+            <div class="empty-state">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                    <polyline points="14 2 14 8 20 8" />
+                </svg>
+                <h3>No meetings yet</h3>
+                <p>Upload your first meeting recording or paste a transcript to get started.</p>
+                <div style="display:flex;gap:10px;">
+                    <a href="{% url 'upload_meeting' %}" class="btn btn-primary">Upload Audio</a>
+                    <a href="{% url 'process_text_meeting' %}" class="btn btn-secondary">Process Text</a>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+    </div>
 </div>
 {% endblock %}

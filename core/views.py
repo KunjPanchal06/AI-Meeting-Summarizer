@@ -154,6 +154,10 @@ def process_text_meeting(request):
 def meeting_list(request):
     meetings = Meeting.objects.filter(user=request.user).order_by('-created_at')
 
+    status_filter = request.GET.get('status')
+    if status_filter in ['completed', 'processing', 'failed']:
+        meetings = meetings.filter(status=status_filter)
+
     if request.GET.get('ai') == 'true':
         # Only show meetings that have a summary (i.e., AI processed)
         meetings = meetings.exclude(summary__isnull=True).exclude(summary__exact='')
@@ -217,3 +221,14 @@ def ask_question(request, meeting_id):
         return JsonResponse(result)
     except Exception as e:
         return JsonResponse({'error': f'Error generating answer: {str(e)}'}, status=500)
+
+
+@login_required(login_url='login')
+def settings_page(request):
+    """User settings page."""
+    total_meetings = Meeting.objects.filter(user=request.user).count()
+    total_tasks = Task.objects.filter(meeting__user=request.user).count()
+    return render(request, 'core/settings.html', {
+        'total_meetings': total_meetings,
+        'total_tasks': total_tasks,
+    })

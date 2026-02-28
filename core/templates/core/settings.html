@@ -1,0 +1,158 @@
+{% extends 'core/base.html' %}
+{% block title %}Settings — Meetingly{% endblock %}
+{% block breadcrumb %}Settings{% endblock %}
+
+{% block content %}
+<div class="fade-in" style="padding:28px 32px;max-width:680px;">
+
+    <div style="margin-bottom:28px;">
+        <h1 style="font-size:22px;font-weight:700;letter-spacing:-0.4px;color:var(--text);margin-bottom:4px;">Settings
+        </h1>
+        <p style="font-size:14px;color:var(--text-muted);">Manage your account and workspace preferences.</p>
+    </div>
+
+    <!-- Profile Section -->
+    <div style="margin-bottom:24px;">
+        <div
+            style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-subtle);margin-bottom:12px;">
+            Profile</div>
+        <div class="card" style="padding:0;overflow:hidden;">
+
+            <!-- User info row -->
+            <div
+                style="padding:20px 24px;display:flex;align-items:center;gap:16px;border-bottom:1px solid var(--border);">
+                <div
+                    style="width:52px;height:52px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;color:white;font-size:20px;font-weight:700;flex-shrink:0;">
+                    {{ user.first_name|default:user.username|slice:":1"|upper }}
+                </div>
+                <div>
+                    <div style="font-size:16px;font-weight:600;color:var(--text);margin-bottom:2px;">
+                        {% if user.first_name %}{{ user.first_name }} {{ user.last_name }}{% else %}{{ user.username }}{% endif %}
+                    </div>
+                    <div style="font-size:13px;color:var(--text-muted);">{{ user.email|default:"No email set" }}</div>
+                </div>
+                <div style="margin-left:auto;">
+                    <span class="badge badge-completed">Active</span>
+                </div>
+            </div>
+
+            <!-- Info fields -->
+            <div style="padding:20px 24px;display:flex;flex-direction:column;gap:16px;">
+                <div style="display:grid;grid-template-columns:140px 1fr;align-items:center;gap:12px;">
+                    <span style="font-size:13px;color:var(--text-muted);">Username</span>
+                    <span style="font-size:13.5px;font-weight:500;color:var(--text);">{{ user.username }}</span>
+                </div>
+                <div style="display:grid;grid-template-columns:140px 1fr;align-items:center;gap:12px;">
+                    <span style="font-size:13px;color:var(--text-muted);">Email</span>
+                    <span style="font-size:13.5px;font-weight:500;color:var(--text);">{{ user.email|default:"—" }}</span>
+                </div>
+                <div style="display:grid;grid-template-columns:140px 1fr;align-items:center;gap:12px;">
+                    <span style="font-size:13px;color:var(--text-muted);">Member since</span>
+                    <span style="font-size:13.5px;font-weight:500;color:var(--text);">{{ user.date_joined|date:"F Y" }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stats Section -->
+    <div style="margin-bottom:24px;">
+        <div
+            style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-subtle);margin-bottom:12px;">
+            Your Stats</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+            <div class="card" style="padding:18px 20px;">
+                <div style="font-size:28px;font-weight:700;color:var(--text);letter-spacing:-0.5px;">{{ total_meetings }}</div>
+                <div style="font-size:13px;color:var(--text-muted);margin-top:3px;">Meetings analyzed</div>
+            </div>
+            <div class="card" style="padding:18px 20px;">
+                <div style="font-size:28px;font-weight:700;color:var(--text);letter-spacing:-0.5px;">{{ total_tasks }}
+                </div>
+                <div style="font-size:13px;color:var(--text-muted);margin-top:3px;">Tasks tracked</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Appearance Section -->
+    <div style="margin-bottom:24px;">
+        <div
+            style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-subtle);margin-bottom:12px;">
+            Appearance</div>
+        <div class="card" style="padding:0;overflow:hidden;">
+            <!-- Dark Mode Row -->
+            <div
+                style="padding:18px 24px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);">
+                <div>
+                    <div style="font-size:14px;font-weight:500;color:var(--text);">Dark Mode</div>
+                    <div style="font-size:12.5px;color:var(--text-muted);margin-top:2px;">Switch between light and dark
+                        theme</div>
+                </div>
+                <label class="toggle" id="themeToggleWrap" title="Toggle dark mode">
+                    <input type="checkbox" id="darkToggle" onchange="Theme.toggle()">
+                    <span class="toggle-track"></span>
+                    <span class="toggle-thumb"></span>
+                </label>
+            </div>
+
+            <!-- Sidebar default state -->
+            <div style="padding:18px 24px;display:flex;align-items:center;justify-content:space-between;">
+                <div>
+                    <div style="font-size:14px;font-weight:500;color:var(--text);">Collapsed Sidebar</div>
+                    <div style="font-size:12.5px;color:var(--text-muted);margin-top:2px;">Start with a compact sidebar
+                        by default</div>
+                </div>
+                <label class="toggle" title="Toggle sidebar default">
+                    <input type="checkbox" id="sidebarToggle" onchange="toggleSidebarPref(this.checked)">
+                    <span class="toggle-track"></span>
+                    <span class="toggle-thumb"></span>
+                </label>
+            </div>
+        </div>
+    </div>
+
+    <!-- Account Actions -->
+    <div>
+        <div
+            style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-subtle);margin-bottom:12px;">
+            Account</div>
+        <div class="card" style="padding:0;overflow:hidden;">
+            <div style="padding:16px 24px;display:flex;align-items:center;justify-content:space-between;">
+                <div>
+                    <div style="font-size:14px;font-weight:500;color:var(--text);">Sign Out</div>
+                    <div style="font-size:12.5px;color:var(--text-muted);margin-top:2px;">Sign out of your Meetingly
+                        account</div>
+                </div>
+                <form method="post" action="{% url 'logout' %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-secondary btn-sm">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                            <polyline points="16 17 21 12 16 7" />
+                            <line x1="21" y1="12" x2="9" y2="12" />
+                        </svg>
+                        Sign Out
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Sync dark mode toggle with current theme
+    document.addEventListener('DOMContentLoaded', () => {
+        const toggle = document.getElementById('darkToggle');
+        if (toggle) toggle.checked = Theme.get() === 'dark';
+
+        const sidebarToggle = document.getElementById('sidebarToggle');
+        if (sidebarToggle) sidebarToggle.checked = localStorage.getItem('meetingly-sidebar') === 'collapsed';
+    });
+
+    function toggleSidebarPref(collapsed) {
+        localStorage.setItem('meetingly-sidebar', collapsed ? 'collapsed' : 'open');
+    }
+</script>
+{% endblock %}
