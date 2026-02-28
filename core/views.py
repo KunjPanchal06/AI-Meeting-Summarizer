@@ -29,12 +29,14 @@ def get_rag_processor():
 
 @login_required(login_url='login')
 def home(request):
-    recent_meetings = Meeting.objects.filter(user=request.user).order_by('-created_at')[:5] if request.user.is_authenticated else []
+    recent_meetings = Meeting.objects.filter(user=request.user).order_by('-created_at')[:5]
+    total_tasks = Task.objects.filter(meeting__user=request.user).count()
+    completed_tasks = Task.objects.filter(meeting__user=request.user, status='completed').count()
     context = {
         'recent_meetings': recent_meetings,
-        'total_meetings': Meeting.objects.filter(user=request.user).count() if request.user.is_authenticated else 0,
-        'completed_tasks': 85,
-        'time_saved': 12,
+        'total_meetings': Meeting.objects.filter(user=request.user).count(),
+        'completed_tasks': completed_tasks,
+        'total_tasks': total_tasks,
     }
     return render(request, 'core/home.html', context)
 
@@ -45,12 +47,25 @@ def upload_meeting(request):
         audio_file = request.FILES.get('audio_file')
 
         if title and audio_file:
+            # Validate file extension
+            allowed_extensions = ['.mp3', '.wav', '.m4a', '.ogg', '.flac', '.webm']
+            file_ext = os.path.splitext(audio_file.name)[1].lower()
+            if file_ext not in allowed_extensions:
+                messages.error(request, f'Unsupported file type "{file_ext}". Allowed: {', '.join(allowed_extensions)}')
+                return render(request, 'core/upload.html')
+
+            # Validate file size (max 100 MB)
+            max_size = 100 * 1024 * 1024
+            if audio_file.size > max_size:
+                messages.error(request, 'File is too large. Maximum size is 100 MB.')
+                return render(request, 'core/upload.html')
+
             try:
                 meeting = Meeting.objects.create(
                     title=title,
                     audio_file=audio_file,
                     status='processing',
-                    user=request.user if request.user.is_authenticated else None
+                    user=request.user
                 )
 
                 # Full file path
@@ -104,7 +119,7 @@ def process_text_meeting(request):
                     title=title,
                     transcript=meeting_text,
                     status='processing',
-                    user=request.user if request.user.is_authenticated else None
+                    user=request.user
                 )
 
                 # Use AI processor for text input
@@ -145,10 +160,37 @@ def meeting_list(request):
 
     return render(request, 'core/meeting_list.html', {'meetings': meetings})
 
+@login_required(login_url='login')
 def meeting_detail(request, meeting_id):
-    meeting = get_object_or_404(Meeting, id=meeting_id)
+    meeting = get_object_or_404(Meeting, id=meeting_id, user=request.user)
     tasks = Task.objects.filter(meeting=meeting)
     return render(request, 'core/meeting_detail.html', {'meeting': meeting, 'tasks': tasks})
+
+
+@login_required(login_url='login')
+@require_POST
+def delete_meeting(request, meeting_id):
+    """Delete a meeting owned by the current user."""
+    meeting = get_object_or_404(Meeting, id=meeting_id, user=request.user)
+    title = meeting.title
+    # Delete associated audio file from disk
+    if meeting.audio_file:
+        file_path = meeting.audio_file.path
+        if os.path.exists(file_path):
+            os.remove(file_path)
+    meeting.delete()
+    messages.success(request, f'Meeting "{title}" deleted successfully.')
+    return redirect('meeting_list')
+
+
+@login_required(login_url='login')
+@require_POST
+def toggle_task_status(request, task_id):
+    """Toggle a task between pending and completed via AJAX."""
+    task = get_object_or_404(Task, id=task_id, meeting__user=request.user)
+    task.status = 'completed' if task.status == 'pending' else 'pending'
+    task.save()
+    return JsonResponse({'status': task.status})
 
 
 @login_required(login_url='login')

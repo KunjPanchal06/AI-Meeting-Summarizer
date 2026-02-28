@@ -7,10 +7,13 @@ import soundfile as sf
 import os
 import tempfile
 import re
+import logging
+
+logger = logging.getLogger(__name__)
 
 class MeetingAIProcessor:
     def __init__(self):
-        print("Initializing AI Models !")
+        logger.info("Initializing AI Models...")
 
         self.whisper_model = whisper.load_model("base")
 
@@ -22,22 +25,22 @@ class MeetingAIProcessor:
         
         self.nlp = spacy.load("en_core_web_sm")
 
-        print("AI Models loaded Successfully ! ")
+        logger.info("AI Models loaded successfully.")
     
     def convert_audio_to_text(self, audio_path):
         try:
-            print("Converting audio file into text file !")
+            logger.info("Converting audio file into text...")
             result = self.whisper_model.transcribe(audio_path)
             transcript = result["text"]
-            print("Audio converted Successfully !")
+            logger.info("Audio converted successfully.")
             return transcript.strip()
         except Exception as e:
-            print(f"Error in audio conversion : {str(e)}")
+            logger.error(f"Error in audio conversion: {str(e)}")
             return None
         
     def generate_summary(self, text):
         try:
-            print("Generating Summary")
+            logger.info("Generating summary...")
             if len(text.split()) < 50:
                 return "Text too short to summarize."
 
@@ -64,13 +67,13 @@ class MeetingAIProcessor:
                 else:
                     summary = combined_summary
         
-            print("Summary generated successfully!")
+            logger.info("Summary generated successfully.")
             return summary.strip()
         
         except Exception as e:
-            print(f"Error in summarization: {str(e)}")
+            logger.error(f"Error in summarization: {str(e)}")
             import traceback
-            traceback.print_exc()
+            logger.debug(traceback.format_exc())
             return "Error generating summary."
         
     def extract_action_items(self, text):
@@ -78,7 +81,7 @@ class MeetingAIProcessor:
         Extract action items using improved semantic and pattern matching
         """
         try:
-            print("Extracting action items...")
+            logger.info("Extracting action items...")
             
             doc = self.nlp(text)
             action_items = []
@@ -107,11 +110,11 @@ class MeetingAIProcessor:
                     unique_items.append(item)
                     seen_tasks.add(task_key)
             
-            print(f"Extracted {len(unique_items)} action items!")
+            logger.info(f"Extracted {len(unique_items)} action items.")
             return unique_items
             
         except Exception as e:
-            print(f"Error extracting action items: {str(e)}")
+            logger.error(f"Error extracting action items: {str(e)}")
             return []
 
     def _extract_from_sentence(self, sentence):
@@ -224,57 +227,43 @@ class MeetingAIProcessor:
         
         return None
 
-
-    def _clean_task_description(self, text):
-        """Clean up task description"""
-        # Remove common prefixes using re.IGNORECASE
-        text = re.sub(r'\b(?:will|should|must|need to|has to|going to)\s*', '', text, flags=re.IGNORECASE)
-        text = re.sub(r'\b(?:action item|task|todo)[:\s]*', '', text, flags=re.IGNORECASE)
-        
-        # Capitalize first letter
-        text = text.strip()
-        if text:
-            text = text[0].upper() + text[1:]
-        
-        return text
-
     def process_meeting(self, audio_file_path):
         """
         Complete pipeline: audio → text → summary → action items
         """
         try:
-            print("="*60)
-            print("STARTING COMPLETE MEETING PROCESSING PIPELINE")
-            print("="*60)
+            logger.info("=" * 60)
+            logger.info("STARTING COMPLETE MEETING PROCESSING PIPELINE")
+            logger.info("=" * 60)
             
             # Step 1: Convert audio to text
-            print("\nSTEP 1: Converting audio to text...")
+            logger.info("STEP 1: Converting audio to text...")
             transcript = self.convert_audio_to_text(audio_file_path)
             
             if not transcript:
-                print("Audio conversion failed. Stopping pipeline.")
+                logger.warning("Audio conversion failed. Stopping pipeline.")
                 return None, None, None
             
-            print(f"Transcript generated! ({len(transcript.split())} words)")
+            logger.info(f"Transcript generated! ({len(transcript.split())} words)")
             
             # Step 2: Generate summary
-            print("\nSTEP 2: Generating summary...")
+            logger.info("STEP 2: Generating summary...")
             summary = self.generate_summary(transcript)
-            print(f"Summary generated! ({len(summary.split())} words)")
+            logger.info(f"Summary generated! ({len(summary.split())} words)")
             
             # Step 3: Extract action items
-            print("\nSTEP 3: Extracting action items...")
+            logger.info("STEP 3: Extracting action items...")
             action_items = self.extract_action_items(transcript)
-            print(f"Found {len(action_items)} action items!")
+            logger.info(f"Found {len(action_items)} action items!")
             
-            print("\n" + "="*60)
-            print("MEETING PROCESSING COMPLETED SUCCESSFULLY!")
-            print("="*60)
+            logger.info("=" * 60)
+            logger.info("MEETING PROCESSING COMPLETED SUCCESSFULLY!")
+            logger.info("=" * 60)
             
             return transcript, summary, action_items
             
         except Exception as e:
-            print(f"Error in complete meeting processing: {str(e)}")
+            logger.error(f"Error in complete meeting processing: {str(e)}")
             return None, None, None
 
     def process_text_only(self, text):
@@ -283,26 +272,26 @@ class MeetingAIProcessor:
         (Skip audio conversion for testing)
         """
         try:
-            print("="*60)
-            print("STARTING TEXT-ONLY PROCESSING PIPELINE")
-            print("="*60)
+            logger.info("=" * 60)
+            logger.info("STARTING TEXT-ONLY PROCESSING PIPELINE")
+            logger.info("=" * 60)
             
             # Step 1: Generate summary
-            print("\nSTEP 1: Generating summary...")
+            logger.info("STEP 1: Generating summary...")
             summary = self.generate_summary(text)
-            print(f"Summary generated! ({len(summary.split())} words)")
+            logger.info(f"Summary generated! ({len(summary.split())} words)")
             
             # Step 2: Extract action items
-            print("\nSTEP 2: Extracting action items...")
+            logger.info("STEP 2: Extracting action items...")
             action_items = self.extract_action_items(text)
-            print(f"Found {len(action_items)} action items!")
+            logger.info(f"Found {len(action_items)} action items!")
             
-            print("\n" + "="*60)
-            print("TEXT PROCESSING COMPLETED SUCCESSFULLY!")
-            print("="*60)
+            logger.info("=" * 60)
+            logger.info("TEXT PROCESSING COMPLETED SUCCESSFULLY!")
+            logger.info("=" * 60)
             
             return text, summary, action_items
             
         except Exception as e:
-            print(f"Error in text processing: {str(e)}")
+            logger.error(f"Error in text processing: {str(e)}")
             return None, None, None

@@ -9,4 +9,6 @@ urlpatterns = [
     path('meetings/', views.meeting_list, name='meeting_list'),
     path('meeting/<int:meeting_id>/', views.meeting_detail, name='meeting_detail'),
     path('meeting/<int:meeting_id>/ask/', views.ask_question, name='ask_question'),
+    path('meeting/<int:meeting_id>/delete/', views.delete_meeting, name='delete_meeting'),
+    path('task/<int:task_id>/toggle/', views.toggle_task_status, name='toggle_task_status'),
 ]

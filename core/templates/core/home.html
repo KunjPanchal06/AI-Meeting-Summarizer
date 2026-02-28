@@ -8,7 +8,8 @@
     <section class="hero">
         <div class="hero-content">
             <h1 class="hero-title">Transform Meetings with AI</h1>
-            <p class="hero-subtitle">Automatically convert meeting recordings into summaries, action items, and insights. Save hours every week with intelligent automation.</p>
+            <p class="hero-subtitle">Automatically convert meeting recordings into summaries, action items, and
+                insights. Save hours every week with intelligent automation.</p>
             <div class="hero-buttons">
                 <a href="{% url 'upload_meeting' %}" class="btn btn-primary">
                     <i class="fas fa-upload"></i>
@@ -22,16 +23,16 @@
         </div>
         <div class="hero-stats">
             <div class="stat">
-                <div class="stat-number">{{ recent_meetings|length|default:'0' }}</div>
+                <div class="stat-number">{{ total_meetings|default:'0' }}</div>
                 <div class="stat-label">Meetings Processed</div>
             </div>
             <div class="stat">
-                <div class="stat-number">98%</div>
-                <div class="stat-label">Accuracy Rate</div>
+                <div class="stat-number">{{ completed_tasks|default:'0' }}</div>
+                <div class="stat-label">Tasks Completed</div>
             </div>
             <div class="stat">
-                <div class="stat-number">5hrs</div>
-                <div class="stat-label">Time Saved Weekly</div>
+                <div class="stat-number">{{ total_tasks|default:'0' }}</div>
+                <div class="stat-label">Total Tasks</div>
             </div>
         </div>
     </section>
@@ -121,29 +122,29 @@
         </div>
         <div class="activity-grid">
             {% if recent_meetings %}
-                {% for meeting in recent_meetings %}
-                <div class="activity-card" onclick="window.location.href='{% url 'meeting_detail' meeting.id %}'">
-                    <div class="card-header">
-                        <div class="status-dot status-{{ meeting.status }}"></div>
-                        <span class="card-date">{{ meeting.created_at|date:"M d" }}</span>
-                    </div>
-                    <h3 class="card-title">{{ meeting.title }}</h3>
-                    <p class="card-subtitle">{{ meeting.created_at|date:"H:i" }}</p>
-                    {% if meeting.summary %}
-                    <p class="card-preview">{{ meeting.summary|truncatewords:12 }}</p>
-                    {% endif %}
-                    <div class="card-footer">
-                        <span class="status-badge status-{{ meeting.status }}">{{ meeting.status|capfirst }}</span>
-                    </div>
+            {% for meeting in recent_meetings %}
+            <div class="activity-card" onclick="window.location.href='{% url 'meeting_detail' meeting.id %}'">
+                <div class="card-header">
+                    <div class="status-dot status-{{ meeting.status }}"></div>
+                    <span class="card-date">{{ meeting.created_at|date:"M d" }}</span>
                 </div>
-                {% endfor %}
+                <h3 class="card-title">{{ meeting.title }}</h3>
+                <p class="card-subtitle">{{ meeting.created_at|date:"H:i" }}</p>
+                {% if meeting.summary %}
+                <p class="card-preview">{{ meeting.summary|truncatewords:12 }}</p>
+                {% endif %}
+                <div class="card-footer">
+                    <span class="status-badge status-{{ meeting.status }}">{{ meeting.status|capfirst }}</span>
+                </div>
+            </div>
+            {% endfor %}
             {% else %}
-                <div class="empty-state">
-                    <i class="fas fa-inbox"></i>
-                    <h3>No meetings yet</h3>
-                    <p>Upload your first meeting to get started</p>
-                    <a href="{% url 'upload_meeting' %}" class="btn btn-primary">Get Started</a>
-                </div>
+            <div class="empty-state">
+                <i class="fas fa-inbox"></i>
+                <h3>No meetings yet</h3>
+                <p>Upload your first meeting to get started</p>
+                <a href="{% url 'upload_meeting' %}" class="btn btn-primary">Get Started</a>
+            </div>
             {% endif %}
         </div>
     </section>
