@@ -148,9 +148,3 @@ GROQ_API_KEY=<your key>
 RENDER=true
 ```
 
-## Known Limitations
-
-- Audio processing can take 1 to 5 minutes depending on file length, as requests go to external APIs
-- The HuggingFace free tier may have cold start delays of 15 to 20 seconds on first use
-- Uploaded audio files are not persisted permanently on free-tier hosting (transcripts and summaries are saved in the database)
-- The free tier on platforms like Render will sleep after 15 minutes of inactivity, causing a slow first request
