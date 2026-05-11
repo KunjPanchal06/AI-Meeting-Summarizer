@@ -165,6 +165,112 @@
     </div>
 
 </div>
+
+<!-- ── PROCESSING OVERLAY ─────────────────────────────────── -->
+<div id="processingOverlay" class="processing-overlay">
+    <div class="processing-card">
+        <!-- Animated AI Icon -->
+        <div class="processing-icon">
+            <div class="processing-icon-ring"></div>
+            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+                <polyline points="7.5 4.21 12 6.81 16.5 4.21" />
+                <polyline points="7.5 19.79 7.5 14.6 3 12" />
+                <polyline points="21 12 16.5 14.6 16.5 19.79" />
+                <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+                <line x1="12" y1="22.08" x2="12" y2="12" />
+            </svg>
+        </div>
+
+        <h2 class="processing-title">Processing Your Meeting</h2>
+        <p class="processing-subtitle" id="processingFileName">Analyzing audio file…</p>
+
+        <!-- Step Progress -->
+        <div class="processing-steps">
+            <div class="processing-step active" id="step1">
+                <div class="step-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="16 16 12 12 8 16" />
+                        <line x1="12" y1="12" x2="12" y2="21" />
+                        <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3" />
+                    </svg>
+                </div>
+                <div class="step-content">
+                    <div class="step-label">Uploading Audio</div>
+                    <div class="step-desc">Sending file to server…</div>
+                </div>
+                <div class="step-status">
+                    <div class="step-spinner"></div>
+                </div>
+            </div>
+
+            <div class="step-connector"><div class="step-connector-fill"></div></div>
+
+            <div class="processing-step" id="step2">
+                <div class="step-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+                        <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                        <line x1="12" y1="19" x2="12" y2="23" />
+                        <line x1="8" y1="23" x2="16" y2="23" />
+                    </svg>
+                </div>
+                <div class="step-content">
+                    <div class="step-label">Transcribing Speech</div>
+                    <div class="step-desc">Converting audio to text with Whisper AI…</div>
+                </div>
+                <div class="step-status">
+                    <div class="step-spinner"></div>
+                </div>
+            </div>
+
+            <div class="step-connector"><div class="step-connector-fill"></div></div>
+
+            <div class="processing-step" id="step3">
+                <div class="step-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10" />
+                        <line x1="12" y1="16" x2="12" y2="12" />
+                        <line x1="12" y1="8" x2="12.01" y2="8" />
+                    </svg>
+                </div>
+                <div class="step-content">
+                    <div class="step-label">Analyzing Content</div>
+                    <div class="step-desc">Generating summary & extracting action items…</div>
+                </div>
+                <div class="step-status">
+                    <div class="step-spinner"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Timer -->
+        <div class="processing-timer">
+            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10" />
+                <polyline points="12 6 12 12 16 14" />
+            </svg>
+            <span id="processingTime">0:00</span>
+            <span class="processing-timer-sep">·</span>
+            <span class="processing-timer-hint">Usually takes 1–5 minutes</span>
+        </div>
+
+        <!-- Rotating tips -->
+        <div class="processing-tip" id="processingTip">
+            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                <circle cx="12" cy="12" r="3" />
+            </svg>
+            <span id="tipText">Whisper AI can understand over 90 languages</span>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
@@ -216,10 +322,80 @@
         }
     });
 
-    // Loading state on submit
+    // ── Processing Overlay Logic ───────────────────────────
+    const overlay = document.getElementById('processingOverlay');
+    const tips = [
+        'Whisper AI can understand over 90 languages',
+        'AI processes audio faster than real-time playback',
+        'Meetingly extracts deadlines and assignees automatically',
+        'You can ask follow-up questions about any meeting',
+        'The summary highlights key decisions and outcomes',
+        'Action items are matched to people mentioned in the meeting',
+        'Longer meetings may take a bit more time — hang tight!',
+        'Your data is processed securely and never shared',
+    ];
+    let tipIndex = 0;
+    let seconds = 0;
+    let stepTimers;
+
+    function showOverlay() {
+        // Set file name in overlay
+        const file = audioInput.files[0];
+        if (file) {
+            document.getElementById('processingFileName').textContent = `Analyzing "${file.name}"…`;
+        }
+
+        overlay.classList.add('visible');
+        document.body.style.overflow = 'hidden';
+
+        // Timer
+        const timerEl = document.getElementById('processingTime');
+        setInterval(() => {
+            seconds++;
+            const m = Math.floor(seconds / 60);
+            const s = seconds % 60;
+            timerEl.textContent = `${m}:${s.toString().padStart(2, '0')}`;
+        }, 1000);
+
+        // Rotate tips
+        setInterval(() => {
+            tipIndex = (tipIndex + 1) % tips.length;
+            const tipEl = document.getElementById('tipText');
+            tipEl.style.opacity = '0';
+            tipEl.style.transform = 'translateY(4px)';
+            setTimeout(() => {
+                tipEl.textContent = tips[tipIndex];
+                tipEl.style.opacity = '1';
+                tipEl.style.transform = 'translateY(0)';
+            }, 250);
+        }, 5000);
+
+        // Animate steps with realistic timing
+        // Step 1 (Upload) — already active, completes quickly
+        setTimeout(() => {
+            document.getElementById('step1').classList.add('done');
+            document.getElementById('step1').querySelector('.step-desc').textContent = 'File uploaded successfully';
+            document.querySelector('#step1 ~ .step-connector').classList.add('filled');
+            // Activate step 2
+            document.getElementById('step2').classList.add('active');
+        }, 3000);
+
+        // Step 2 (Transcribe) — takes longest
+        setTimeout(() => {
+            document.getElementById('step2').classList.add('done');
+            document.getElementById('step2').querySelector('.step-desc').textContent = 'Transcript generated';
+            document.querySelector('#step2 ~ .step-connector').classList.add('filled');
+            // Activate step 3
+            document.getElementById('step3').classList.add('active');
+        }, 45000);
+
+        // Step 3 stays active until page redirects
+    }
+
+    // Form submit handler
     document.getElementById('uploadForm').addEventListener('submit', function () {
-        submitBtn.innerHTML = `<svg class="spin" xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"/><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"/><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"/></svg> Processing…`;
         submitBtn.disabled = true;
+        showOverlay();
     });
 </script>
 {% endblock %}
