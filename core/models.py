@@ -4,16 +4,18 @@ from django.contrib.auth.models import User
 
 class Meeting(models.Model):
     STATUS_CHOICES = [
+        ('pending', 'Pending'),
         ('processing', 'Processing'),
-        ('completed', 'Completed'),
-        ('failed', 'Failed'),
+        ('done', 'Done'),
+        ('error', 'Error'),
     ]
     
     title = models.CharField(max_length=200)
     audio_file = models.FileField(upload_to='meetings/', null=True, blank=True)
     transcript = models.TextField(blank=True)
     summary = models.TextField(blank=True)
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='processing')  
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')  
+    error_message = models.TextField(blank=True, default='')
     user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

@@ -1,0 +1,386 @@
+{% extends 'core/base.html' %}
+{% block title %}Processing — {{ meeting.title }} — Meetingly{% endblock %}
+{% block breadcrumb %}Processing{% endblock %}
+
+{% block content %}
+<div class="fade-in" style="padding:28px 32px;max-width:640px;margin:0 auto;">
+
+    <!-- Page Header -->
+    <div style="text-align:center;margin-bottom:32px;">
+        <div class="processing-hero-icon">
+            <div class="processing-hero-ring"></div>
+            <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                <polyline points="7.5 4.21 12 6.81 16.5 4.21"/>
+                <polyline points="7.5 19.79 7.5 14.6 3 12"/>
+                <polyline points="21 12 16.5 14.6 16.5 19.79"/>
+                <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+                <line x1="12" y1="22.08" x2="12" y2="12"/>
+            </svg>
+        </div>
+        <h1 style="font-size:22px;font-weight:700;letter-spacing:-0.4px;color:var(--text);margin-bottom:6px;">
+            Processing Your Meeting
+        </h1>
+        <p style="font-size:14px;color:var(--text-muted);" id="meetingTitle">
+            "{{ meeting.title }}"
+        </p>
+    </div>
+
+    <!-- Progress Card -->
+    <div class="card" style="padding:28px;margin-bottom:20px;">
+
+        <!-- Percentage Display -->
+        <div style="text-align:center;margin-bottom:20px;">
+            <span id="pctValue" style="font-size:48px;font-weight:800;letter-spacing:-2px;color:var(--accent);line-height:1;">
+                0
+            </span>
+            <span style="font-size:20px;font-weight:600;color:var(--accent);">%</span>
+        </div>
+
+        <!-- Progress Bar -->
+        <div class="sse-progress-track">
+            <div class="sse-progress-fill" id="progressBar" style="width:0%;">
+                <div class="sse-progress-glow"></div>
+            </div>
+        </div>
+
+        <!-- Stage Label -->
+        <div style="text-align:center;margin-top:16px;">
+            <div id="stageLabel" style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:4px;">
+                Waiting for worker…
+            </div>
+            <div id="stageMessage" style="font-size:13px;color:var(--text-muted);">
+                Your meeting is queued for processing
+            </div>
+        </div>
+    </div>
+
+    <!-- Pipeline Steps -->
+    <div class="card" style="padding:20px;margin-bottom:20px;">
+        <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-subtle);margin-bottom:14px;">
+            Pipeline Progress
+        </div>
+
+        <div class="pipeline-steps">
+            <!-- Transcription -->
+            <div class="pipeline-step" id="pipeTranscription">
+                <div class="pipeline-step-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                        <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                        <line x1="12" y1="19" x2="12" y2="23"/>
+                        <line x1="8" y1="23" x2="16" y2="23"/>
+                    </svg>
+                </div>
+                <div class="pipeline-step-content">
+                    <div class="pipeline-step-label">Transcription</div>
+                    <div class="pipeline-step-desc">Converting speech to text</div>
+                </div>
+                <div class="pipeline-step-status" id="statusTranscription">
+                    <div class="pipeline-dot"></div>
+                </div>
+            </div>
+
+            <div class="pipeline-connector"><div class="pipeline-connector-fill"></div></div>
+
+            <!-- Summarization -->
+            <div class="pipeline-step" id="pipeSummarization">
+                <div class="pipeline-step-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="17" y1="10" x2="3" y2="10"/>
+                        <line x1="21" y1="6" x2="3" y2="6"/>
+                        <line x1="21" y1="14" x2="3" y2="14"/>
+                        <line x1="17" y1="18" x2="3" y2="18"/>
+                    </svg>
+                </div>
+                <div class="pipeline-step-content">
+                    <div class="pipeline-step-label">Summarization</div>
+                    <div class="pipeline-step-desc">Generating meeting summary</div>
+                </div>
+                <div class="pipeline-step-status" id="statusSummarization">
+                    <div class="pipeline-dot"></div>
+                </div>
+            </div>
+
+            <div class="pipeline-connector"><div class="pipeline-connector-fill"></div></div>
+
+            <!-- Extraction -->
+            <div class="pipeline-step" id="pipeExtraction">
+                <div class="pipeline-step-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="9 11 12 14 22 4"/>
+                        <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+                    </svg>
+                </div>
+                <div class="pipeline-step-content">
+                    <div class="pipeline-step-label">Action Items</div>
+                    <div class="pipeline-step-desc">Extracting tasks &amp; assignees</div>
+                </div>
+                <div class="pipeline-step-status" id="statusExtraction">
+                    <div class="pipeline-dot"></div>
+                </div>
+            </div>
+
+            <div class="pipeline-connector"><div class="pipeline-connector-fill"></div></div>
+
+            <!-- Saving -->
+            <div class="pipeline-step" id="pipeSaving">
+                <div class="pipeline-step-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                        <polyline points="17 21 17 13 7 13 7 21"/>
+                        <polyline points="7 3 7 8 15 8"/>
+                    </svg>
+                </div>
+                <div class="pipeline-step-content">
+                    <div class="pipeline-step-label">Saving</div>
+                    <div class="pipeline-step-desc">Storing results</div>
+                </div>
+                <div class="pipeline-step-status" id="statusSaving">
+                    <div class="pipeline-dot"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Timer & Tips -->
+    <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:12px;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none"
+            stroke="var(--text-subtle)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/>
+            <polyline points="12 6 12 12 16 14"/>
+        </svg>
+        <span id="elapsedTime" style="font-size:13px;color:var(--text-muted);font-weight:500;">0:00</span>
+        <span style="color:var(--text-subtle);">·</span>
+        <span style="font-size:12.5px;color:var(--text-subtle);">Usually takes 1–5 min</span>
+    </div>
+
+    <div style="text-align:center;min-height:20px;">
+        <p id="tipText" style="font-size:12.5px;color:var(--text-subtle);transition:all 250ms ease;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" style="vertical-align:-2px;margin-right:4px;">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                <circle cx="12" cy="12" r="3"/>
+            </svg>
+            <span id="tipContent">Whisper AI can understand over 90 languages</span>
+        </p>
+    </div>
+
+    <!-- Error State (hidden initially) -->
+    <div id="errorCard" class="card" style="padding:20px;margin-top:16px;display:none;border-color:var(--red);">
+        <div style="display:flex;align-items:flex-start;gap:12px;">
+            <div style="width:36px;height:36px;border-radius:10px;background:var(--red-light);color:var(--red);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"/>
+                    <line x1="15" y1="9" x2="9" y2="15"/>
+                    <line x1="9" y1="9" x2="15" y2="15"/>
+                </svg>
+            </div>
+            <div>
+                <div style="font-size:14px;font-weight:600;color:var(--red);margin-bottom:4px;">Processing Failed</div>
+                <div id="errorMessage" style="font-size:13px;color:var(--text-muted);"></div>
+                <div style="margin-top:12px;display:flex;gap:8px;">
+                    <a href="{% url 'upload_meeting' %}" class="btn btn-secondary btn-sm">Try Again</a>
+                    <a href="{% url 'meeting_list' %}" class="btn btn-ghost btn-sm">Go to Meetings</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function() {
+    // ── Config ──────────────────────────────────────────────
+    const MEETING_ID = {{ meeting.pk }};
+    const SSE_URL = "{% url 'meeting_progress_sse' meeting_id=meeting.pk %}";
+    const DETAIL_URL = "{% url 'meeting_detail' meeting_id=meeting.pk %}";
+
+    // ── DOM refs ────────────────────────────────────────────
+    const pctValue = document.getElementById('pctValue');
+    const progressBar = document.getElementById('progressBar');
+    const stageLabel = document.getElementById('stageLabel');
+    const stageMessage = document.getElementById('stageMessage');
+    const elapsedTime = document.getElementById('elapsedTime');
+    const tipContent = document.getElementById('tipContent');
+    const errorCard = document.getElementById('errorCard');
+    const errorMessage = document.getElementById('errorMessage');
+
+    // Pipeline step elements
+    const pipeSteps = {
+        transcription: document.getElementById('pipeTranscription'),
+        summarization: document.getElementById('pipeSummarization'),
+        extraction:    document.getElementById('pipeExtraction'),
+        saving:        document.getElementById('pipeSaving'),
+    };
+
+    const connectors = document.querySelectorAll('.pipeline-connector');
+
+    // ── Stage display names ─────────────────────────────────
+    const stageNames = {
+        transcription: 'Transcribing Audio',
+        summarization: 'Generating Summary',
+        extraction:    'Extracting Action Items',
+        saving:        'Saving Results',
+        done:          'Complete!',
+    };
+
+    // Stage → threshold pct for marking previous stages done
+    const stageOrder = ['transcription', 'summarization', 'extraction', 'saving', 'done'];
+
+    // ── Tips ────────────────────────────────────────────────
+    const tips = [
+        'Whisper AI can understand over 90 languages',
+        'AI processes audio faster than real-time playback',
+        'Meetingly extracts deadlines and assignees automatically',
+        'You can ask follow-up questions about any meeting',
+        'The summary highlights key decisions and outcomes',
+        'Action items are matched to people mentioned in the meeting',
+        'Longer meetings may take a bit more time — hang tight!',
+        'Your data is processed securely and never shared',
+    ];
+    let tipIndex = 0;
+    setInterval(() => {
+        tipIndex = (tipIndex + 1) % tips.length;
+        tipContent.style.opacity = '0';
+        tipContent.style.transform = 'translateY(4px)';
+        setTimeout(() => {
+            tipContent.textContent = tips[tipIndex];
+            tipContent.style.opacity = '1';
+            tipContent.style.transform = 'translateY(0)';
+        }, 250);
+    }, 5000);
+
+    // ── Elapsed Timer ───────────────────────────────────────
+    let seconds = 0;
+    setInterval(() => {
+        seconds++;
+        const m = Math.floor(seconds / 60);
+        const s = seconds % 60;
+        elapsedTime.textContent = `${m}:${s.toString().padStart(2, '0')}`;
+    }, 1000);
+
+    // ── Pipeline Step State Machine ─────────────────────────
+    function updatePipeline(stage, pct) {
+        const currentIdx = stageOrder.indexOf(stage);
+
+        stageOrder.forEach((s, i) => {
+            const el = pipeSteps[s];
+            if (!el) return;
+
+            const statusEl = el.querySelector('.pipeline-step-status');
+
+            if (i < currentIdx) {
+                // Completed stages
+                el.classList.add('completed');
+                el.classList.remove('active');
+                statusEl.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+                // Fill connector before this step
+                if (i > 0 && connectors[i - 1]) {
+                    connectors[i - 1].classList.add('filled');
+                }
+            } else if (i === currentIdx) {
+                // Active stage
+                el.classList.add('active');
+                el.classList.remove('completed');
+                statusEl.innerHTML = '<div class="pipeline-spinner"></div>';
+                // Fill connector before this step
+                if (i > 0 && connectors[i - 1]) {
+                    connectors[i - 1].classList.add('filled');
+                }
+            } else {
+                // Future stages
+                el.classList.remove('active', 'completed');
+                statusEl.innerHTML = '<div class="pipeline-dot"></div>';
+            }
+        });
+
+        // If done, mark all as completed
+        if (stage === 'done') {
+            stageOrder.forEach((s, i) => {
+                const el = pipeSteps[s];
+                if (!el) return;
+                el.classList.add('completed');
+                el.classList.remove('active');
+                el.querySelector('.pipeline-step-status').innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+            });
+            connectors.forEach(c => c.classList.add('filled'));
+        }
+    }
+
+    // ── SSE Connection ──────────────────────────────────────
+    let eventSource = null;
+
+    function connect() {
+        eventSource = new EventSource(SSE_URL);
+
+        eventSource.onmessage = function(e) {
+            try {
+                const data = JSON.parse(e.data);
+                const { stage, pct, message, done, error } = data;
+
+                // Update progress bar
+                progressBar.style.width = pct + '%';
+                pctValue.textContent = pct;
+
+                // Update stage labels
+                stageLabel.textContent = stageNames[stage] || stage;
+                stageMessage.textContent = message;
+
+                // Update pipeline steps
+                updatePipeline(stage, pct);
+
+                // Handle completion
+                if (done) {
+                    eventSource.close();
+                    stageLabel.textContent = 'Complete!';
+                    stageMessage.textContent = 'Redirecting to your meeting…';
+                    progressBar.classList.add('complete');
+                    // Short delay to let user see 100% before redirect
+                    setTimeout(() => {
+                        window.location.href = DETAIL_URL;
+                    }, 1500);
+                    return;
+                }
+
+                // Handle error
+                if (error) {
+                    eventSource.close();
+                    errorCard.style.display = 'block';
+                    errorMessage.textContent = message;
+                    progressBar.classList.add('error');
+                    return;
+                }
+
+            } catch (err) {
+                console.error('SSE parse error:', err);
+            }
+        };
+
+        eventSource.onerror = function() {
+            // EventSource will auto-reconnect on transient errors.
+            // If the connection is closed permanently, show fallback.
+            if (eventSource.readyState === EventSource.CLOSED) {
+                console.log('SSE connection closed.');
+            }
+        };
+    }
+
+    connect();
+
+    // Clean up on page unload
+    window.addEventListener('beforeunload', () => {
+        if (eventSource) eventSource.close();
+    });
+
+})();
+</script>
+{% endblock %}

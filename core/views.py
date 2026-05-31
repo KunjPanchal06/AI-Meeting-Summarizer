@@ -8,7 +8,6 @@ import json
 import os
 
 from .models import Meeting, Task
-from .ai_processor import MeetingAIProcessor 
 
 # Lazy-load AI processors (only initialized when first used)
 _ai_processor = None
@@ -17,6 +16,7 @@ _rag_processor = None
 def get_ai_processor():
     global _ai_processor
     if _ai_processor is None:
+        from .ai_processor import MeetingAIProcessor
         _ai_processor = MeetingAIProcessor()
     return _ai_processor
 
@@ -51,7 +51,7 @@ def upload_meeting(request):
             allowed_extensions = ['.mp3', '.wav', '.m4a', '.ogg', '.flac', '.webm']
             file_ext = os.path.splitext(audio_file.name)[1].lower()
             if file_ext not in allowed_extensions:
-                messages.error(request, f'Unsupported file type "{file_ext}". Allowed: {', '.join(allowed_extensions)}')
+                messages.error(request, f'Unsupported file type "{file_ext}". Allowed: {", ".join(allowed_extensions)}')
                 return render(request, 'core/upload.html')
 
             # Validate file size (max 100 MB)
@@ -61,46 +61,23 @@ def upload_meeting(request):
                 return render(request, 'core/upload.html')
 
             try:
+                # Save meeting with pending status
                 meeting = Meeting.objects.create(
                     title=title,
                     audio_file=audio_file,
-                    status='processing',
+                    status='pending',
                     user=request.user
                 )
 
-                # Full file path
-                audio_path = os.path.join(settings.MEDIA_ROOT, str(meeting.audio_file))
+                # Dispatch async Celery task instead of processing synchronously
+                from .tasks import process_meeting
+                process_meeting.delay(meeting.pk)
 
-                # Run AI processing
-                transcript, summary, action_items = get_ai_processor().process_meeting(audio_path)
-
-                if not transcript:
-                    meeting.status = 'failed'
-                    meeting.save()
-                    messages.error(request, f'Failed to process "{title}". Please try again.')
-                    return redirect('meeting_detail', meeting_id=meeting.id)
-
-                # Save results
-                meeting.transcript = transcript
-                meeting.summary = summary
-                meeting.status = 'completed'
-                meeting.save()
-
-                # Save extracted tasks
-                for item in action_items:
-                    Task.objects.create(
-                        meeting=meeting,
-                        description=item.get('description', ''),
-                        assignee=item.get('assignee', ''),
-                        deadline_text=item.get('deadline', ''),
-                        status=item.get('status', 'pending')
-                    )
-
-                messages.success(request, f'Meeting "{title}" processed successfully!')
-                return redirect('meeting_detail', meeting_id=meeting.id)
+                # Redirect to processing page (not detail page)
+                return redirect('meeting_processing', pk=meeting.pk)
 
             except Exception as e:
-                messages.error(request, f'Error processing meeting: {str(e)}')
+                messages.error(request, f'Error uploading meeting: {str(e)}')
 
         else:
             messages.error(request, 'Please provide both title and audio file.')
@@ -115,32 +92,20 @@ def process_text_meeting(request):
 
         if title and meeting_text:
             try:
+                # Save meeting with the transcript already filled in
                 meeting = Meeting.objects.create(
                     title=title,
                     transcript=meeting_text,
-                    status='processing',
+                    status='pending',
                     user=request.user
                 )
 
-                # Use AI processor for text input
-                transcript, summary, action_items = get_ai_processor().process_text_only(meeting_text)
+                # Dispatch async Celery task (will skip transcription since transcript exists)
+                from .tasks import process_meeting
+                process_meeting.delay(meeting.pk)
 
-                meeting.summary = summary
-                meeting.status = 'completed'
-                meeting.save()
-
-                # Add tasks
-                for item in action_items:
-                    Task.objects.create(
-                        meeting=meeting,
-                        description=item.get('description', ''),
-                        assignee=item.get('assignee', ''),
-                        deadline_text=item.get('deadline', ''),
-                        status=item.get('status', 'pending')
-                    )
-
-                messages.success(request, f'Meeting "{title}" processed successfully!')
-                return redirect('meeting_detail', meeting_id=meeting.id)
+                # Redirect to processing page
+                return redirect('meeting_processing', pk=meeting.pk)
 
             except Exception as e:
                 messages.error(request, f'Error processing meeting: {str(e)}')
@@ -151,11 +116,22 @@ def process_text_meeting(request):
     return render(request, 'core/process_text.html')
 
 @login_required(login_url='login')
+def meeting_processing(request, pk):
+    """Render the processing waiting page, or redirect if already done."""
+    meeting = get_object_or_404(Meeting, pk=pk, user=request.user)
+
+    # If already done, redirect straight to detail
+    if meeting.status == 'done':
+        return redirect('meeting_detail', meeting_id=meeting.pk)
+
+    return render(request, 'core/meeting_processing.html', {'meeting': meeting})
+
+@login_required(login_url='login')
 def meeting_list(request):
     meetings = Meeting.objects.filter(user=request.user).order_by('-created_at')
 
     status_filter = request.GET.get('status')
-    if status_filter in ['completed', 'processing', 'failed']:
+    if status_filter in ['done', 'processing', 'error', 'pending']:
         meetings = meetings.filter(status=status_filter)
 
     if request.GET.get('ai') == 'true':
@@ -203,7 +179,7 @@ def ask_question(request, meeting_id):
     """RAG-powered Q&A endpoint for a specific meeting."""
     meeting = get_object_or_404(Meeting, id=meeting_id, user=request.user)
 
-    if meeting.status != 'completed':
+    if meeting.status != 'done':
         return JsonResponse({'error': 'Meeting has not been processed yet.'}, status=400)
 
     try:

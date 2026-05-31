@@ -1657,3 +1657,205 @@ body.auth-body {
   color: var(--accent);
   white-space: nowrap;
 }
+
+/* ============================================================
+   MEETING PROCESSING PAGE — SSE Progress UI
+   ============================================================ */
+
+/* ── Hero Icon ───────────────────────────────────────────── */
+.processing-hero-icon {
+  width: 80px;
+  height: 80px;
+  border-radius: 24px;
+  background: var(--accent-light);
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 20px;
+  position: relative;
+}
+
+.processing-hero-ring {
+  position: absolute;
+  inset: -6px;
+  border-radius: 28px;
+  border: 2.5px solid transparent;
+  border-top-color: var(--accent);
+  animation: spin 1.8s linear infinite;
+}
+
+/* ── Progress Bar ────────────────────────────────────────── */
+.sse-progress-track {
+  width: 100%;
+  height: 14px;
+  background: var(--surface-2);
+  border-radius: 99px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  position: relative;
+}
+
+.sse-progress-fill {
+  height: 100%;
+  border-radius: 99px;
+  background: linear-gradient(90deg, #6366F1 0%, #818CF8 50%, #A78BFA 100%);
+  transition: width 600ms cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  min-width: 0;
+}
+
+.sse-progress-fill.complete {
+  background: linear-gradient(90deg, #10B981 0%, #34D399 50%, #6EE7B7 100%);
+}
+
+.sse-progress-fill.error {
+  background: linear-gradient(90deg, #EF4444 0%, #F87171 100%);
+}
+
+.sse-progress-glow {
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: 60px;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4));
+  animation: progressGlow 1.5s ease-in-out infinite;
+}
+
+@keyframes progressGlow {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 1; }
+}
+
+/* ── Pipeline Steps ──────────────────────────────────────── */
+.pipeline-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.pipeline-step {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  transition: all var(--transition);
+  opacity: 0.45;
+}
+
+.pipeline-step.active {
+  opacity: 1;
+  background: var(--accent-light);
+}
+
+.pipeline-step.completed {
+  opacity: 0.8;
+}
+
+.pipeline-step-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: var(--surface-2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-subtle);
+  flex-shrink: 0;
+  transition: all var(--transition);
+}
+
+.pipeline-step.active .pipeline-step-icon {
+  background: var(--accent);
+  color: white;
+}
+
+.pipeline-step.completed .pipeline-step-icon {
+  background: var(--green-light);
+  color: var(--green);
+}
+
+.pipeline-step-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.pipeline-step-label {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.pipeline-step-desc {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 1px;
+}
+
+.pipeline-step-status {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--green);
+}
+
+.pipeline-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--border);
+}
+
+.pipeline-step.active .pipeline-dot {
+  background: var(--accent);
+  box-shadow: 0 0 8px rgba(99, 102, 241, 0.5);
+}
+
+.pipeline-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+/* Pipeline connectors */
+.pipeline-connector {
+  width: 2px;
+  height: 16px;
+  margin-left: 27px;
+  background: var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+  position: relative;
+}
+
+.pipeline-connector-fill {
+  width: 100%;
+  height: 0;
+  background: var(--accent);
+  border-radius: 2px;
+  transition: height 400ms ease;
+}
+
+.pipeline-connector.filled .pipeline-connector-fill {
+  height: 100%;
+  background: var(--green);
+}
+
+/* ── Badge updates for new statuses ──────────────────────── */
+.badge-done {
+  background: var(--green-light);
+  color: var(--green);
+}
+
+.badge-error {
+  background: var(--red-light);
+  color: var(--red);
+}

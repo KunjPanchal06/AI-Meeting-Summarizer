@@ -34,12 +34,18 @@
         <a href="{% url 'meeting_list' %}"
             class="btn btn-sm {% if not request.GET.status %}btn-primary{% else %}btn-secondary{% endif %}"
             style="border-radius:99px;">All</a>
-        <a href="?status=completed"
-            class="btn btn-sm {% if request.GET.status == 'completed' %}btn-primary{% else %}btn-secondary{% endif %}"
+        <a href="?status=done"
+            class="btn btn-sm {% if request.GET.status == 'done' %}btn-primary{% else %}btn-secondary{% endif %}"
             style="border-radius:99px;">Completed</a>
         <a href="?status=processing"
             class="btn btn-sm {% if request.GET.status == 'processing' %}btn-primary{% else %}btn-secondary{% endif %}"
             style="border-radius:99px;">Processing</a>
+        <a href="?status=pending"
+            class="btn btn-sm {% if request.GET.status == 'pending' %}btn-primary{% else %}btn-secondary{% endif %}"
+            style="border-radius:99px;">Pending</a>
+        <a href="?status=error"
+            class="btn btn-sm {% if request.GET.status == 'error' %}btn-primary{% else %}btn-secondary{% endif %}"
+            style="border-radius:99px;">Error</a>
     </div>
 
     {% if meetings %}

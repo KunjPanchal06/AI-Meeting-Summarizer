@@ -1,6 +1,7 @@
 # core/urls.py
 from django.urls import path
 from . import views
+from . import sse
 
 urlpatterns = [
     path('', views.home, name='home'),
@@ -12,4 +13,7 @@ urlpatterns = [
     path('meeting/<int:meeting_id>/delete/', views.delete_meeting, name='delete_meeting'),
     path('task/<int:task_id>/toggle/', views.toggle_task_status, name='toggle_task_status'),
     path('settings/', views.settings_page, name='settings'),
+    # Async processing routes
+    path('meetings/<int:pk>/processing/', views.meeting_processing, name='meeting_processing'),
+    path('meetings/<int:meeting_id>/progress/', sse.meeting_progress_sse, name='meeting_progress_sse'),
 ]
