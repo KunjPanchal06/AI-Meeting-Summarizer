@@ -43,13 +43,11 @@ All AI processing is handled through external APIs rather than running models lo
 |---|---|
 | Backend | Django 4.2, Django REST Framework |
 | Frontend | HTML, Vanilla CSS, Vanilla JS |
-| Database | SQLite (development) / PostgreSQL (production) |
+| Database | SQLite |
 | Speech-to-Text | OpenAI Whisper Large V3 via HuggingFace Inference API |
 | Summarization | Facebook BART Large CNN via HuggingFace Inference API |
 | Named Entity Recognition | dslim/bert-base-NER via HuggingFace Inference API |
 | RAG / Q&A | Llama 3.3 70B via Groq API + scikit-learn TF-IDF |
-| Static Files | WhiteNoise |
-| Production Server | Gunicorn |
 
 ## Project Structure
 
@@ -72,8 +70,6 @@ AI-Meeting-Summarizer/
         urls.py               # Root URL configuration
     manage.py
     requirements.txt
-    Procfile                  # For deployment (gunicorn)
-    build.sh                  # Build script for deployment
     .env                      # Secret keys and API tokens (not committed to git)
 ```
 
@@ -128,23 +124,4 @@ The application will not process audio or text without valid API keys. There are
 | `HF_TOKEN` | Whisper transcription, BART summarization, BERT NER | Yes — ~1000 requests/hour |
 | `GROQ_API_KEY` | Meeting Q&A (Llama 3.3 70B) | Yes — generous daily limits |
 
-## Deployment
-
-The project is pre-configured for deployment on Render.
-
-- `Procfile` starts gunicorn
-- `build.sh` installs dependencies, runs `collectstatic` and `migrate`
-- `settings.py` automatically sets `DEBUG=False` when the `RENDER` environment variable is present
-- WhiteNoise serves static files without a separate CDN
-- PostgreSQL is supported via the `DATABASE_URL` environment variable
-
-Set the following environment variables on your hosting platform:
-
-```
-SECRET_KEY=<generate a new one for production>
-ALLOWED_HOSTS=<your-app-name>.onrender.com
-HF_TOKEN=<your token>
-GROQ_API_KEY=<your key>
-RENDER=true
-```
 
