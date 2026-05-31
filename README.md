@@ -1,28 +1,32 @@
-# Meetingly - AI Meeting Summarizer
+# Meetingly — AI Meeting Summarizer
 
 [![Python](https://img.shields.io/badge/Python-3.13-blue)](https://www.python.org/)
 [![Django](https://img.shields.io/badge/Django-4.2.7-green)](https://www.djangoproject.com/)
+[![Celery](https://img.shields.io/badge/Celery-5.3.6-37814a)](https://docs.celeryq.dev/)
+[![Redis](https://img.shields.io/badge/Redis-7-DC382D)](https://redis.io/)
 [![License](https://img.shields.io/badge/License-MIT-yellow)](LICENSE)
 
 ## Overview
 
-Meetingly is a Django web application that processes meeting recordings and turns them into structured, actionable outputs. You upload an audio file (or paste meeting notes as text), and the application transcribes the speech, generates a concise summary, and extracts action items with assigned people and deadlines.
+Meetingly is a Django web application that processes meeting recordings and turns them into structured, actionable outputs. Upload an audio file (or paste meeting notes as text) and the application transcribes the speech, generates a concise summary, and extracts action items — all asynchronously in the background with real-time progress updates streamed to your browser.
 
-All AI processing is handled through external APIs rather than running models locally. This keeps the application lightweight and deployable on any standard server without GPU requirements.
+All AI processing is handled through external APIs (HuggingFace, Groq) rather than running models locally, keeping the application lightweight and runnable on any standard machine without a GPU.
 
 ## What It Does
 
 **Audio upload flow:**
 1. User uploads an audio file (MP3, WAV, M4A, OGG, FLAC, WebM — up to 100 MB)
-2. The audio is sent to OpenAI Whisper (via HuggingFace API) for speech-to-text transcription
-3. The transcript is sent to Facebook BART (via HuggingFace API) for summarization
-4. Named entities (people's names) are extracted using BERT NER (via HuggingFace API)
-5. Action items are identified from the transcript using the extracted names and pattern matching
-6. All results are saved and displayed on the meeting detail page
+2. The upload returns immediately and a Celery background task is dispatched
+3. The browser is redirected to a live processing page with real-time progress via SSE
+4. The audio is sent to OpenAI Whisper (via HuggingFace API) for speech-to-text transcription
+5. The transcript is sent to Facebook BART (via HuggingFace API) for summarization
+6. Named entities (people's names) are extracted using BERT NER (via HuggingFace API)
+7. Action items are identified from the transcript using the extracted names and pattern matching
+8. On completion, the browser auto-redirects to the meeting detail page
 
 **Text input flow:**
 - Users can also paste meeting notes or a transcript directly, skipping the audio step
-- Summarization and action item extraction run on the text input
+- Summarization and action item extraction run asynchronously on the text input
 
 **Meeting Q&A (RAG):**
 - On any completed meeting, users can ask natural language questions about the meeting content
@@ -37,11 +41,46 @@ All AI processing is handled through external APIs rather than running models lo
 - Registration, login, and logout are fully implemented
 - Each user only sees their own meetings and tasks
 
+## Architecture
+
+### Async Processing Pipeline
+
+Meeting processing runs **asynchronously** using Celery workers with Redis as the message broker. This means uploads return instantly and the heavy AI workload runs in a separate process.
+
+```
+Browser  ──POST /upload/──▶  Django  ──dispatch──▶  Celery Worker
+                                                        │
+Browser  ◀──SSE stream────  Django  ◀──progress──  Redis Cache
+                                                        │
+Browser  ──auto-redirect──▶  Meeting Detail Page    (on completion)
+```
+
+| Component | Role |
+|---|---|
+| **Celery** | Distributed task queue — runs the AI pipeline in a background worker process |
+| **Redis** | Message broker for Celery tasks + cache for real-time progress data |
+| **SSE** | Server-Sent Events — streams progress updates from Redis to the browser |
+| **Processing Page** | Dedicated UI with animated progress bar, stage tracker, and elapsed timer |
+
+### Processing Stages
+
+Each meeting goes through these stages, with progress written to Redis at every step:
+
+| Stage | Progress | Description |
+|---|---|---|
+| Transcription | 5 – 40% | Audio → text via Whisper (skipped for text-only meetings) |
+| Summarization | 45 – 70% | Transcript → summary via BART |
+| Action Items | 75 – 90% | NER + pattern matching to extract tasks |
+| Saving | 95 – 100% | Persist results to the database |
+
 ## Tech Stack
 
 | Layer | Technology |
 |---|---|
 | Backend | Django 4.2, Django REST Framework |
+| Task Queue | Celery 5.3.6 |
+| Broker / Cache | Redis 7 (via Docker) |
+| Real-time Updates | Server-Sent Events (SSE) |
 | Frontend | HTML, Vanilla CSS, Vanilla JS |
 | Database | SQLite |
 | Speech-to-Text | OpenAI Whisper Large V3 via HuggingFace Inference API |
@@ -54,26 +93,34 @@ All AI processing is handled through external APIs rather than running models lo
 ```
 AI-Meeting-Summarizer/
     core/
-        hf_client.py          # HuggingFace API client (transcription, summarization, NER)
-        ai_processor.py       # Orchestrates the full processing pipeline
-        rag_processor.py      # RAG-based Q&A using TF-IDF + Groq
-        models.py             # Meeting and Task models
-        views.py              # All page views and AJAX endpoints
-        urls.py               # URL routing for core app
-        templates/core/       # HTML templates (base, home, upload, meeting detail, etc.)
-        static/core/          # CSS and JS
+        hf_client.py              # HuggingFace API client (transcription, summarization, NER)
+        ai_processor.py           # Orchestrates the full processing pipeline
+        rag_processor.py          # RAG-based Q&A using TF-IDF + Groq
+        tasks.py                  # Celery background task for async processing
+        sse.py                    # SSE endpoint for real-time progress streaming
+        models.py                 # Meeting and Task models
+        views.py                  # All page views and AJAX endpoints
+        urls.py                   # URL routing for core app
+        templates/core/           # HTML templates (base, home, upload, detail, processing, etc.)
+        static/core/              # CSS and JS
     accounts/
-        views.py              # Login, signup, logout
-        templates/accounts/   # Auth page templates
+        views.py                  # Login, signup, logout
+        templates/accounts/       # Auth page templates
     meeting_summarizer/
-        settings.py           # Django settings
-        urls.py               # Root URL configuration
+        celery.py                 # Celery app initialization and configuration
+        settings.py               # Django settings (includes Celery + Redis config)
+        urls.py                   # Root URL configuration
     manage.py
     requirements.txt
-    .env                      # Secret keys and API tokens (not committed to git)
+    .env                          # Secret keys and API tokens (not committed to git)
 ```
 
 ## Local Setup
+
+### Prerequisites
+
+- **Python 3.13+**
+- **Docker Desktop** — used to run Redis ([download here](https://www.docker.com/products/docker-desktop/))
 
 ### 1. Clone the repository
 
@@ -106,14 +153,46 @@ GROQ_API_KEY=your-groq-api-key
 - Get a HuggingFace token at: https://huggingface.co/settings/tokens
 - Get a Groq API key at: https://console.groq.com
 
-### 4. Run migrations and start the server
+### 4. Start Redis (via Docker)
+
+```bash
+docker run -d --name redis -p 6379:6379 redis:7-alpine
+```
+
+> To stop/start Redis later: `docker stop redis` / `docker start redis`
+
+### 5. Run migrations
 
 ```bash
 python manage.py migrate
+```
+
+### 6. Start the application (3 terminals)
+
+You need **three separate terminal processes** running simultaneously:
+
+**Terminal 1 — Django dev server:**
+```bash
 python manage.py runserver
 ```
 
+**Terminal 2 — Celery worker:**
+```bash
+celery -A meeting_summarizer worker --loglevel=info --pool=solo
+```
+
+> `--pool=solo` is required on Windows. On macOS/Linux you can omit it.
+
+**Terminal 3 — Redis** is already running via Docker from step 4.
+
 Visit `http://127.0.0.1:8000` in your browser.
+
+### Verify everything is connected
+
+1. Upload an audio file or paste meeting text
+2. You should be redirected to the **processing page** with a live progress bar
+3. Each stage updates in real-time as the Celery worker progresses
+4. On completion, you are auto-redirected to the meeting detail page
 
 ## API Keys Required
 
@@ -123,5 +202,3 @@ The application will not process audio or text without valid API keys. There are
 |---|---|---|
 | `HF_TOKEN` | Whisper transcription, BART summarization, BERT NER | Yes — ~1000 requests/hour |
 | `GROQ_API_KEY` | Meeting Q&A (Llama 3.3 70B) | Yes — generous daily limits |
-
-
