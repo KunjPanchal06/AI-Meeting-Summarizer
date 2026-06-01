@@ -1,7 +1,7 @@
 # Meetingly — AI Meeting Summarizer
 
 [![Python](https://img.shields.io/badge/Python-3.13-blue)](https://www.python.org/)
-[![Django](https://img.shields.io/badge/Django-4.2.7-green)](https://www.djangoproject.com/)
+[![Django](https://img.shields.io/badge/Django-4.2.21-green)](https://www.djangoproject.com/)
 [![Celery](https://img.shields.io/badge/Celery-5.3.6-37814a)](https://docs.celeryq.dev/)
 [![Redis](https://img.shields.io/badge/Redis-7-DC382D)](https://redis.io/)
 [![License](https://img.shields.io/badge/License-MIT-yellow)](LICENSE)
@@ -79,15 +79,16 @@ Each meeting goes through these stages, with progress written to Redis at every 
 | Layer | Technology |
 |---|---|
 | Backend | Django 4.2, Django REST Framework |
+| Authentication | django-allauth (Google OAuth 2.0) + Django built-in auth |
 | Task Queue | Celery 5.3.6 |
 | Broker / Cache | Redis 7 (via Docker) |
 | Real-time Updates | Server-Sent Events (SSE) |
 | Frontend | HTML, Vanilla CSS, Vanilla JS |
-| Database | SQLite |
+| Database | PostgreSQL 16 + pgvector |
 | Speech-to-Text | OpenAI Whisper Large V3 via HuggingFace Inference API |
 | Summarization | Facebook BART Large CNN via HuggingFace Inference API |
 | Named Entity Recognition | dslim/bert-base-NER via HuggingFace Inference API |
-| RAG / Q&A | Llama 3.3 70B via Groq API + scikit-learn TF-IDF |
+| RAG / Q&A | Llama 3.3 70B via Groq API + pgvector semantic search |
 
 ## Project Structure
 
@@ -106,10 +107,11 @@ AI-Meeting-Summarizer/
         static/core/              # CSS and JS
     accounts/
         views.py                  # Login, signup, logout
-        templates/accounts/       # Auth page templates
+        templates/accounts/       # Auth page templates (with Google OAuth buttons)
+        management/commands/      # setup_google_oauth management command
     meeting_summarizer/
         celery.py                 # Celery app initialization and configuration
-        settings.py               # Django settings (includes Celery + Redis config)
+        settings.py               # Django settings (includes Celery, Redis, allauth config)
         urls.py                   # Root URL configuration
     manage.py
     requirements.txt
