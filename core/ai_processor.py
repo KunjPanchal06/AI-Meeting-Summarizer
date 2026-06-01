@@ -2,7 +2,6 @@
 # Removed local imports: whisper, torch, spacy, transformers, librosa, soundfile
 # All model inference is now handled by core.hf_client
 
-import os
 import re
 import logging
 
@@ -133,7 +132,7 @@ class MeetingAIProcessor:
 
         if match:
             person = match.group(1)
-            action_verb = match.group(2)
+            # match.group(2) is the action verb, we don't need to capture it
             action_desc = match.group(3).strip()
 
             # Extract deadline from the action description

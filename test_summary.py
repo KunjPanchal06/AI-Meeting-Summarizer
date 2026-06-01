@@ -53,6 +53,6 @@ print("PROCESSING STATISTICS:")
 print(f"   • Original text: {len(transcript.split())} words")
 print(f"   • Summary: {len(summary.split())} words ({100-int((len(summary.split())/len(transcript.split()))*100)}% reduction)")
 print(f"   • Action items found: {len(action_items)}")
-print(f"   • Processing time: Completed successfully")
+print("   • Processing time: Completed successfully")
 
 print("\nCOMPLETE AI MEETING PROCESSING PIPELINE WORKING PERFECTLY!")
