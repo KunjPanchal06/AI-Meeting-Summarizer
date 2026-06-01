@@ -39,6 +39,7 @@ All AI processing is handled through external APIs (HuggingFace, Groq) rather th
 
 **User accounts:**
 - Registration, login, and logout are fully implemented
+- **Google OAuth** sign-in is available via django-allauth ("Continue with Google" button on login/signup pages)
 - Each user only sees their own meetings and tasks
 
 ## Architecture
@@ -148,10 +149,13 @@ SECRET_KEY=your-django-secret-key
 ALLOWED_HOSTS=localhost,127.0.0.1
 HF_TOKEN=your-huggingface-api-token
 GROQ_API_KEY=your-groq-api-key
+GOOGLE_CLIENT_ID=your-google-client-id
+GOOGLE_CLIENT_SECRET=your-google-client-secret
 ```
 
 - Get a HuggingFace token at: https://huggingface.co/settings/tokens
 - Get a Groq API key at: https://console.groq.com
+- Get Google OAuth credentials at: https://console.cloud.google.com/apis/credentials (see CHANGES.md for step-by-step instructions)
 
 ### 4. Start Redis (via Docker)
 
@@ -161,11 +165,14 @@ docker run -d --name redis -p 6379:6379 redis:7-alpine
 
 > To stop/start Redis later: `docker stop redis` / `docker start redis`
 
-### 5. Run migrations
+### 5. Run migrations and setup OAuth
 
 ```bash
 python manage.py migrate
+python manage.py setup_google_oauth
 ```
+
+> The `setup_google_oauth` command creates the Google SocialApp record from your `.env` variables. If you haven't set `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` yet, it will print a warning and skip — Google login won't work until they're configured.
 
 ### 6. Start the application (3 terminals)
 
@@ -202,3 +209,5 @@ The application will not process audio or text without valid API keys. There are
 |---|---|---|
 | `HF_TOKEN` | Whisper transcription, BART summarization, BERT NER | Yes — ~1000 requests/hour |
 | `GROQ_API_KEY` | Meeting Q&A (Llama 3.3 70B) | Yes — generous daily limits |
+| `GOOGLE_CLIENT_ID` | Google OAuth sign-in | Yes — free |
+| `GOOGLE_CLIENT_SECRET` | Google OAuth sign-in | Yes — free |

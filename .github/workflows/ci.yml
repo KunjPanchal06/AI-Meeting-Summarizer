@@ -46,6 +46,8 @@ jobs:
       DB_PASSWORD: postgres
       DB_HOST: localhost
       DB_PORT: "5432"
+      GOOGLE_CLIENT_ID: "dummy-google-client-id-for-ci"
+      GOOGLE_CLIENT_SECRET: "dummy-google-secret-for-ci"
 
     steps:
       - name: Checkout code
@@ -63,6 +65,9 @@ jobs:
 
       - name: Run migrations
         run: python manage.py migrate
+
+      - name: Setup Google OAuth SocialApp
+        run: python manage.py setup_google_oauth
 
       - name: Run tests
         run: pytest --tb=short -v
