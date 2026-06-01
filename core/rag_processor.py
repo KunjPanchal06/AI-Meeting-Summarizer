@@ -1,14 +1,18 @@
 import os
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
+import logging
+
 from groq import Groq
 from django.conf import settings as django_settings
+from pgvector.django import CosineDistance
+
+logger = logging.getLogger(__name__)
 
 
 class MeetingRAGProcessor:
     """
     RAG (Retrieval-Augmented Generation) processor for meeting Q&A.
-    Uses TF-IDF for chunk retrieval and Groq API for answer generation.
+    Uses pgvector cosine-similarity search for chunk retrieval
+    and Groq API for answer generation.
     """
 
     def __init__(self):
@@ -18,51 +22,37 @@ class MeetingRAGProcessor:
         self.client = Groq(api_key=api_key)
         self.model = "llama-3.3-70b-versatile"
 
-    def chunk_text(self, text, chunk_size=200, overlap=50):
-        """Split text into overlapping word chunks for better retrieval."""
-        words = text.split()
-        if len(words) <= chunk_size:
-            return [text]
+    def _retrieve_chunks(self, meeting_id, question_embedding, top_k=4):
+        """
+        Retrieve the top-k most semantically similar transcript chunks
+        from the database using pgvector cosine distance.
+
+        Args:
+            meeting_id: The ID of the meeting to search within.
+            question_embedding: The 384-dim embedding vector for the user's question.
+            top_k: Number of closest chunks to return (default 4).
+
+        Returns:
+            List of dicts with 'text' and 'score' keys.
+        """
+        from core.models import TranscriptChunk
+
+        results = (
+            TranscriptChunk.objects
+            .filter(meeting_id=meeting_id)
+            .annotate(distance=CosineDistance('embedding', question_embedding))
+            .order_by('distance')[:top_k]
+        )
 
         chunks = []
-        start = 0
-        while start < len(words):
-            end = start + chunk_size
-            chunk = " ".join(words[start:end])
-            chunks.append(chunk)
-            start += chunk_size - overlap
+        for chunk in results:
+            # Cosine distance → cosine similarity = 1 - distance
+            chunks.append({
+                "text": chunk.text,
+                "score": round(1.0 - chunk.distance, 4),
+            })
 
         return chunks
-
-    def find_relevant_chunks(self, question, chunks, top_k=3):
-        """Find the most relevant text chunks using TF-IDF + cosine similarity."""
-        if not chunks:
-            return []
-
-        # Combine question with chunks for TF-IDF vectorization
-        all_texts = [question] + chunks
-        vectorizer = TfidfVectorizer(stop_words="english")
-        tfidf_matrix = vectorizer.fit_transform(all_texts)
-
-        # Compute similarity between question (first) and all chunks
-        question_vec = tfidf_matrix[0:1]
-        chunk_vecs = tfidf_matrix[1:]
-        similarities = cosine_similarity(question_vec, chunk_vecs).flatten()
-
-        # Get top-k most similar chunks
-        top_k = min(top_k, len(chunks))
-        top_indices = similarities.argsort()[-top_k:][::-1]
-
-        # Filter out chunks with zero similarity
-        relevant = []
-        for idx in top_indices:
-            if similarities[idx] > 0:
-                relevant.append({
-                    "text": chunks[idx],
-                    "score": float(similarities[idx]),
-                })
-
-        return relevant
 
     def generate_answer(self, question, context_chunks):
         """Generate an answer using Groq API with retrieved context."""
@@ -98,19 +88,37 @@ class MeetingRAGProcessor:
 
         return response.choices[0].message.content.strip()
 
-    def ask_question(self, transcript, summary, question):
+    def ask_question(self, meeting_id, question):
         """
-        Full RAG pipeline: chunk → retrieve → generate answer.
-        Uses both transcript and summary for better context.
+        Full RAG pipeline: embed question → vector search → generate answer.
+
+        Args:
+            meeting_id: The database ID of the meeting to query.
+            question: The user's natural-language question.
+
+        Returns:
+            Dict with 'answer' and 'sources' keys.
         """
-        # Combine transcript and summary for richer context
-        full_text = f"Meeting Summary:\n{summary}\n\nFull Transcript:\n{transcript}"
+        from core import hf_client
+        from core.models import TranscriptChunk
 
-        # Step 1: Chunk the text
-        chunks = self.chunk_text(full_text)
+        # Verify that embeddings exist for this meeting
+        chunk_count = TranscriptChunk.objects.filter(meeting_id=meeting_id).count()
+        if chunk_count == 0:
+            return {
+                "answer": (
+                    "No transcript chunks have been embedded for this meeting yet. "
+                    "Please wait for processing to complete, or reprocess the meeting."
+                ),
+                "sources": [],
+            }
 
-        # Step 2: Find relevant chunks
-        relevant_chunks = self.find_relevant_chunks(question, chunks, top_k=4)
+        # Step 1: Embed the user's question
+        question_vectors = hf_client.embed_text(question)
+        question_embedding = question_vectors[0]
+
+        # Step 2: Retrieve top 4 most similar chunks via pgvector
+        relevant_chunks = self._retrieve_chunks(meeting_id, question_embedding, top_k=4)
 
         if not relevant_chunks:
             return {
@@ -118,7 +126,7 @@ class MeetingRAGProcessor:
                 "sources": [],
             }
 
-        # Step 3: Generate answer
+        # Step 3: Generate answer using Groq
         answer = self.generate_answer(question, relevant_chunks)
 
         # Format sources (truncate for display)

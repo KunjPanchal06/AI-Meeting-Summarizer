@@ -17,6 +17,7 @@ MODELS = {
     "whisper": f"{API_BASE}/openai/whisper-large-v3",
     "summarizer": f"{API_BASE}/facebook/bart-large-cnn",
     "ner": f"{API_BASE}/dslim/bert-base-NER",
+    "embedding": f"{API_BASE}/sentence-transformers/all-MiniLM-L6-v2/pipeline/feature-extraction",
 }
 
 
@@ -201,3 +202,34 @@ def extract_entities(text):
     except Exception as e:
         logger.error(f"NER API error: {e}")
         return []
+
+
+def embed_text(texts):
+    """
+    Generate 384-dim embeddings using sentence-transformers/all-MiniLM-L6-v2.
+
+    Args:
+        texts: A single string or list of strings to embed.
+
+    Returns:
+        List of embedding vectors (each a list of 384 floats).
+        For a single input string, returns a list containing one vector.
+    """
+    if isinstance(texts, str):
+        texts = [texts]
+
+    logger.info(f"Embedding {len(texts)} text(s) via HF API...")
+
+    payload = {"inputs": texts}
+    result = call_hf_api(MODELS["embedding"], payload=payload)
+
+    # The API returns a list of vectors (one per input text)
+    if isinstance(result, list) and len(result) > 0:
+        # If single text was sent, API may return [[...]] or [...]
+        if isinstance(result[0], list):
+            return result
+        # Single vector returned directly
+        return [result]
+
+    logger.error(f"Unexpected Embedding API response: {result}")
+    raise RuntimeError(f"Embedding API returned unexpected format: {type(result)}")

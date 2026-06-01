@@ -193,7 +193,7 @@ def ask_question(request, meeting_id):
 
     try:
         rag = get_rag_processor()
-        result = rag.ask_question(meeting.transcript, meeting.summary, question)
+        result = rag.ask_question(meeting.id, question)
         return JsonResponse(result)
     except Exception as e:
         return JsonResponse({'error': f'Error generating answer: {str(e)}'}, status=500)

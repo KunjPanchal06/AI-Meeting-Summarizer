@@ -1,7 +1,7 @@
 """
 Celery background task for processing meetings asynchronously.
 
-Runs the full AI pipeline (transcription → summarization → NER → action items)
+Runs the full AI pipeline (transcription → summarization → NER → action items → embedding)
 and writes stage-by-stage progress to Redis for SSE consumption.
 """
 
@@ -36,17 +36,44 @@ def _set_progress(meeting_id, stage, pct, message, done=False, error=False):
     logger.info(f"Progress [{meeting_id}]: {stage} — {pct}% — {message}")
 
 
+def _chunk_transcript(text, chunk_size=250, overlap=50):
+    """
+    Split transcript into overlapping word chunks of 200-300 words.
+
+    Args:
+        text: The full transcript text.
+        chunk_size: Target number of words per chunk (default 250, within 200-300 range).
+        overlap: Number of overlapping words between consecutive chunks.
+
+    Returns:
+        List of chunk strings.
+    """
+    words = text.split()
+    if len(words) <= chunk_size:
+        return [text]
+
+    chunks = []
+    start = 0
+    while start < len(words):
+        end = start + chunk_size
+        chunk = " ".join(words[start:end])
+        chunks.append(chunk)
+        start += chunk_size - overlap
+
+    return chunks
+
+
 @shared_task(bind=True, max_retries=0)
 def process_meeting(self, meeting_id):
     """
     Full async AI pipeline for a meeting.
 
-    Handles both audio meetings (transcription → summarization → action items)
-    and text-only meetings (summarization → action items, skip transcription).
+    Handles both audio meetings (transcription → summarization → action items → embedding)
+    and text-only meetings (summarization → action items → embedding, skip transcription).
 
     Progress is written to Redis at each stage for the SSE endpoint to stream.
     """
-    from core.models import Meeting, Task as MeetingTask
+    from core.models import Meeting, Task as MeetingTask, TranscriptChunk
     from core.ai_processor import MeetingAIProcessor
     from core import hf_client
 
@@ -79,30 +106,74 @@ def process_meeting(self, meeting_id):
 
             meeting.transcript = transcript
             meeting.save(update_fields=["transcript"])
-            _set_progress(meeting_id, "transcription", 40, "Transcription complete!")
+            _set_progress(meeting_id, "transcription", 30, "Transcription complete!")
         else:
             # Text-only meeting — transcript already exists
             transcript = meeting.transcript
-            _set_progress(meeting_id, "transcription", 40, "Using provided transcript.")
+            _set_progress(meeting_id, "transcription", 30, "Using provided transcript.")
 
         # ── Stage 2: Summarization ───────────────────────────────────
-        _set_progress(meeting_id, "summarization", 45, "Generating summary…")
+        _set_progress(meeting_id, "summarization", 35, "Generating summary…")
 
         summary = processor.generate_summary(transcript)
         meeting.summary = summary
         meeting.save(update_fields=["summary"])
 
-        _set_progress(meeting_id, "summarization", 70, "Summary generated!")
+        _set_progress(meeting_id, "summarization", 55, "Summary generated!")
 
         # ── Stage 3: NER & Action Items ──────────────────────────────
-        _set_progress(meeting_id, "extraction", 75, "Extracting action items…")
+        _set_progress(meeting_id, "extraction", 60, "Extracting action items…")
 
         action_items = processor.extract_action_items(transcript)
 
-        _set_progress(meeting_id, "extraction", 90, f"Found {len(action_items)} action items.")
+        _set_progress(meeting_id, "extraction", 70, f"Found {len(action_items)} action items.")
 
-        # ── Stage 4: Saving Results ──────────────────────────────────
-        _set_progress(meeting_id, "saving", 95, "Saving results…")
+        # ── Stage 4: Embedding Transcript Chunks ─────────────────────
+        _set_progress(meeting_id, "embedding", 72, "Splitting transcript into chunks…")
+
+        # Delete any existing chunks for this meeting (in case of reprocessing)
+        TranscriptChunk.objects.filter(meeting=meeting).delete()
+
+        chunks = _chunk_transcript(transcript)
+        total_chunks = len(chunks)
+        logger.info(f"Meeting {meeting_id}: {total_chunks} chunks to embed.")
+
+        _set_progress(
+            meeting_id, "embedding", 75,
+            f"Embedding {total_chunks} chunks…",
+        )
+
+        # Embed in batches (HF API can handle batched inputs)
+        BATCH_SIZE = 16
+        saved_count = 0
+        for batch_start in range(0, total_chunks, BATCH_SIZE):
+            batch_texts = chunks[batch_start : batch_start + BATCH_SIZE]
+            batch_vectors = hf_client.embed_text(batch_texts)
+
+            chunk_objects = []
+            for text, vector in zip(batch_texts, batch_vectors):
+                chunk_objects.append(
+                    TranscriptChunk(
+                        meeting=meeting,
+                        text=text,
+                        embedding=vector,
+                    )
+                )
+
+            TranscriptChunk.objects.bulk_create(chunk_objects)
+            saved_count += len(chunk_objects)
+
+            # Report batch progress (75% → 90% during embedding)
+            embed_pct = 75 + int((saved_count / total_chunks) * 15)
+            _set_progress(
+                meeting_id, "embedding", embed_pct,
+                f"Embedded {saved_count}/{total_chunks} chunks…",
+            )
+
+        _set_progress(meeting_id, "embedding", 90, f"All {total_chunks} chunks embedded!")
+
+        # ── Stage 5: Saving Results ──────────────────────────────────
+        _set_progress(meeting_id, "saving", 92, "Saving action items…")
 
         for item in action_items:
             MeetingTask.objects.create(

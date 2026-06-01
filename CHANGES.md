@@ -1,191 +1,183 @@
-# CHANGES.md — Celery + Redis Async Processing with SSE Progress
+# CHANGES: TF-IDF → pgvector Semantic Search Migration
 
-## Overview
-
-This changeset migrates the AI meeting processing pipeline from **synchronous** (blocking the HTTP request) to **asynchronous** (Celery background tasks) with **real-time browser progress updates** via Server-Sent Events (SSE).
-
----
-
-## Old vs New Flow
-
-### Old Flow (Synchronous)
-
-```
-Browser → POST /upload/ → Django runs AI pipeline (1–5 min) → Redirect to detail page
-```
-
-- The entire pipeline (transcription → summarization → NER → action items) ran inside the Django request cycle
-- The browser showed a **fake** progress overlay with hardcoded timers (3s for upload, 45s for transcription)
-- Long-running requests could time out
-- The user had no real visibility into processing progress
-
-### New Flow (Asynchronous)
-
-```
-Browser → POST /upload/ → Django saves Meeting & dispatches Celery task → Redirect to /processing/
-Browser → EventSource(/progress/) → SSE stream ← Redis ← Celery worker
-Browser → auto-redirect to detail page on completion
-```
-
-- Upload returns immediately (~100ms) after saving the file and dispatching the task
-- A dedicated processing page shows **real** progress from the actual AI pipeline
-- Each stage writes its progress to Redis, which is streamed to the browser via SSE
-- Auto-redirects to the detail page when processing is complete
+> **Date:** 2026-06-01  
+> **Scope:** Replace keyword-based TF-IDF RAG retrieval with semantic vector search using pgvector and `all-MiniLM-L6-v2` embeddings.
 
 ---
 
-## Files Created
+## Files Created or Modified
 
-### `meeting_summarizer/celery.py`
-Initializes the Celery application. Sets `DJANGO_SETTINGS_MODULE`, creates the `Celery('meeting_summarizer')` instance, loads config from Django settings (prefixed with `CELERY_`), and auto-discovers `tasks.py` in all installed apps.
+### Modified Files
 
-### `core/tasks.py`
-Contains the `process_meeting(meeting_id)` Celery shared task. This task:
-1. Fetches the Meeting from the database
-2. Runs each AI pipeline stage (transcription, summarization, NER, action items)
-3. After each stage, writes progress JSON to Redis via `django.core.cache`
-4. Handles both audio and text-only meetings (skips transcription if transcript exists)
-5. On error, sets `status='error'` and saves the error message
+| File | What Changed | Why |
+|------|-------------|-----|
+| `requirements.txt` | Added `pgvector`, `psycopg2-binary`. Removed `scikit-learn`, `scipy`, `joblib`, `threadpoolctl`. | pgvector Python bindings and PostgreSQL adapter are needed; sklearn dependencies were only used for TF-IDF and are no longer needed. |
+| `.env` | Added `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT` variables. | PostgreSQL connection credentials (pgvector requires PostgreSQL; SQLite doesn't support extensions). |
+| `meeting_summarizer/settings.py` | Switched `DATABASES` engine from `django.db.backends.sqlite3` to `django.db.backends.postgresql`. | pgvector is a PostgreSQL extension and cannot run on SQLite. |
+| `core/models.py` | Added `TranscriptChunk` model with `meeting` (FK), `text` (TextField), and `embedding` (VectorField, 384 dimensions). Added HNSW index on the embedding column. | Stores pre-computed transcript chunks and their vector embeddings for fast cosine-similarity retrieval at query time. |
+| `core/hf_client.py` | Added `sentence-transformers/all-MiniLM-L6-v2` to the `MODELS` dict. Added `embed_text()` function. | Provides a unified API call for generating 384-dimensional sentence embeddings, reusing the existing HF Inference API client with retry logic. |
+| `core/tasks.py` | Added Stage 4 (Embedding) between action-item extraction and result saving. Includes `_chunk_transcript()` helper. | After a meeting is processed, the transcript is split into overlapping chunks, embedded via HF API, and stored as `TranscriptChunk` rows so the RAG system can query them later. |
+| `core/rag_processor.py` | **Complete rewrite.** Removed all TF-IDF/sklearn code. New logic: embed question → pgvector cosine search → Groq LLM answer. | The core change: replaced keyword matching with semantic understanding for dramatically better retrieval quality. |
+| `core/views.py` | Changed `ask_question()` view to pass `meeting.id` to `rag.ask_question()` instead of `meeting.transcript, meeting.summary`. | The new RAG processor retrieves chunks from the database by meeting ID instead of receiving raw text each time. |
 
-### `core/sse.py`
-Contains the `meeting_progress_sse(request, meeting_id)` view that returns a `StreamingHttpResponse` with `content_type='text/event-stream'`. A generator function:
-- Polls Redis every 0.8 seconds for progress data
-- Sends heartbeat comments (`: heartbeat N`) to prevent proxy timeouts
-- Formats progress as SSE data events
-- Closes the stream when processing completes or errors
-- Has a 5-minute safety timeout
+### Created Files
 
-### `core/templates/core/meeting_processing.html`
-A dedicated processing page with:
-- Animated hero icon with spinning ring
-- Large percentage counter (0–100%)
-- Gradient progress bar with glow animation
-- 4-step pipeline tracker (Transcription → Summarization → Action Items → Saving)
-- Elapsed timer and rotating tips
-- Error card with retry button
-- Vanilla JS `EventSource` that connects to the SSE endpoint and updates all UI elements in real-time
-
-### `core/migrations/0004_meeting_error_message_alter_meeting_status.py`
-Auto-generated migration that:
-- Adds `error_message` TextField to Meeting model
-- Updates `status` field choices to `(pending, processing, done, error)` with default `'pending'`
+| File | Purpose |
+|------|---------|
+| `core/migrations/0005_transcriptchunk.py` | Django migration that creates the `vector` PostgreSQL extension and the `core_transcriptchunk` table with an HNSW index on the embedding column. |
+| `CHANGES.md` | This file — documents all changes made during the migration. |
 
 ---
 
-## Files Modified
+## Old TF-IDF Retrieval vs. New pgvector Semantic Search
 
-### `requirements.txt`
-Added: `celery==5.3.6`, `redis==5.0.1`, `django-redis==5.4.0`
+### How TF-IDF Worked (Old)
 
-### `meeting_summarizer/__init__.py`
-Imports and exposes the Celery app so it loads on Django startup:
-```python
-from .celery import app as celery_app
-__all__ = ('celery_app',)
+```
+User asks question
+        │
+        ▼
+┌─────────────────────────┐
+│ Combine transcript +    │
+│ summary into one string │
+└────────────┬────────────┘
+             │
+             ▼
+┌─────────────────────────┐
+│ Split into 200-word     │
+│ chunks (on every call)  │
+└────────────┬────────────┘
+             │
+             ▼
+┌─────────────────────────┐
+│ TF-IDF vectorize all    │
+│ chunks + question       │
+│ (sklearn TfidfVectorizer│
+│  re-fitted every call)  │
+└────────────┬────────────┘
+             │
+             ▼
+┌─────────────────────────┐
+│ Cosine similarity       │
+│ (sklearn) → top 3 chunks│
+└────────────┬────────────┘
+             │
+             ▼
+┌─────────────────────────┐
+│ Send chunks + question  │
+│ to Groq/Llama → answer  │
+└─────────────────────────┘
 ```
 
-### `meeting_summarizer/settings.py`
-Added at the end:
-- `REDIS_URL` from environment variable (fallback `redis://localhost:6379/0`)
-- Celery broker/backend configuration pointing to Redis
-- `django-redis` `CACHES` configuration for SSE progress data
+**Limitations:**
+- **Keyword-based:** TF-IDF matches words, not meaning. "What was the budget?" won't find "We allocated $50K for marketing" because they share no keywords.
+- **Re-computed every call:** Chunks and TF-IDF vectors were rebuilt from scratch on every question — no caching.
+- **No persistence:** Nothing was stored in the database; the full transcript had to be loaded and processed each time.
 
-### `core/models.py`
-- Changed `STATUS_CHOICES` from `(processing, completed, failed)` to `(pending, processing, done, error)`
-- Changed default status from `'processing'` to `'pending'`
-- Added `error_message = TextField(blank=True, default='')`
+### How pgvector Semantic Search Works (New)
 
-### `core/views.py`
-- `upload_meeting`: Now saves the meeting and calls `process_meeting.delay(meeting.pk)` instead of running the pipeline synchronously. Redirects to the processing page instead of the detail page.
-- `process_text_meeting`: Same async pattern — saves meeting with transcript, dispatches Celery task, redirects to processing page.
-- Added `meeting_processing` view: renders the waiting page, or redirects to detail if already done.
-- `meeting_list`: Updated status filter values to match new choices.
-- `ask_question`: Updated status check from `'completed'` to `'done'`.
+```
+┌─── At Processing Time (Celery Task) ───┐
+│                                         │
+│  Transcript                             │
+│       │                                 │
+│       ▼                                 │
+│  Split into 250-word overlapping chunks │
+│       │                                 │
+│       ▼                                 │
+│  Embed each chunk via HF API           │
+│  (all-MiniLM-L6-v2 → 384-dim vectors) │
+│       │                                 │
+│       ▼                                 │
+│  Save to TranscriptChunk table         │
+│  (text + embedding stored in Postgres) │
+└─────────────────────────────────────────┘
 
-### `core/urls.py`
-Added two new routes:
-- `meetings/<int:pk>/processing/` → `meeting_processing` view
-- `meetings/<int:meeting_id>/progress/` → `meeting_progress_sse` SSE endpoint
+┌─── At Query Time ──────────────────────┐
+│                                         │
+│  User's question                        │
+│       │                                 │
+│       ▼                                 │
+│  Embed question via HF API             │
+│  (same all-MiniLM-L6-v2 model)        │
+│       │                                 │
+│       ▼                                 │
+│  pgvector cosine distance query        │
+│  (filtered by meeting_id, top 4)       │
+│       │                                 │
+│       ▼                                 │
+│  Concatenate chunk texts as context    │
+│       │                                 │
+│       ▼                                 │
+│  Send to Groq/Llama → answer           │
+│  (identical prompt, no changes)        │
+└─────────────────────────────────────────┘
+```
 
-### `core/templates/core/upload.html`
-- Removed the entire `#processingOverlay` div and its ~130 lines of fake timer JavaScript
-- Form submit now just disables the button and shows a spinner; the redirect happens server-side
-
-### `core/templates/core/meeting_detail.html`
-- Updated all status checks from `'completed'` to `'done'`
-- Processing state now shows a "View Live Progress" button linking to the processing page
-- Error state now displays `meeting.error_message` when available
-- Auto-refresh replaced with redirect to processing page
-
-### `core/templates/core/meeting_list.html`
-- Updated filter chips from `completed/processing` to `done/processing/pending/error`
-
-### `core/static/core/css/style.css`
-Added ~200 lines of CSS for the processing page:
-- `.processing-hero-icon` and `.processing-hero-ring` (spinning ring animation)
-- `.sse-progress-track` and `.sse-progress-fill` (gradient progress bar with glow)
-- `.pipeline-step`, `.pipeline-connector` (4-stage pipeline tracker)
-- `.pipeline-spinner` (spinning loader for active steps)
-- `.badge-done` and `.badge-error` (new status badge variants)
+**Advantages:**
+- **Semantic understanding:** Finds conceptually similar content even when exact words don't match.
+- **Pre-computed:** Embeddings are generated once during meeting processing; queries are instant database lookups.
+- **Indexed:** The HNSW index on the vector column enables sub-millisecond approximate nearest-neighbor search even with thousands of chunks.
 
 ---
 
-## Component Roles
+## Role of Each New Component
 
-| Component | Role |
-|-----------|------|
-| **Celery** | Distributed task queue that runs the AI pipeline in a separate worker process, freeing the Django web server to respond immediately |
-| **Redis** | Serves as both the Celery message broker (task queue) and the progress data store (via django-redis cache) |
-| **SSE** | Server-Sent Events — a one-directional HTTP streaming protocol that pushes real-time progress updates from Django to the browser without WebSockets |
-| **Processing Page** | A dedicated UI that connects to the SSE endpoint and visualizes the pipeline progress with animations, percentage counter, and stage tracker |
+### pgvector (PostgreSQL Extension)
+
+pgvector adds native vector data types and similarity-search operators to PostgreSQL. It stores 384-dimensional float vectors alongside regular relational data, and provides:
+- `vector` column type for storing embeddings
+- `<=>` operator for cosine distance
+- HNSW and IVFFlat index types for fast approximate nearest-neighbor search
+
+### all-MiniLM-L6-v2 (Sentence Transformer Model)
+
+A compact sentence embedding model from the `sentence-transformers` family. It maps any text (up to 256 tokens) to a 384-dimensional dense vector that captures semantic meaning. Two texts with similar meaning will have vectors with high cosine similarity, regardless of whether they share exact words.
+
+We call this model via the **HuggingFace Inference API** (not locally) — consistent with how the project already uses Whisper, BART, and BERT-NER.
+
+### TranscriptChunk Model
+
+A Django model that stores:
+- `meeting` — Foreign key linking the chunk to its source meeting
+- `text` — The raw chunk text (200-300 words)
+- `embedding` — A 384-dimensional vector (pgvector `VectorField`)
+
+This model acts as the bridge between the meeting processing pipeline (which generates the data) and the RAG query system (which retrieves it).
 
 ---
 
-## How to Run Locally
+## How Embeddings Are Generated and Stored
 
-You need **three separate processes** running simultaneously:
+During the Celery background task (`core/tasks.py`), after summarization and action-item extraction:
 
-### 1. Install Redis
+1. **Chunking:** The `_chunk_transcript()` function splits the full transcript into overlapping chunks of ~250 words with 50-word overlap. Overlap ensures that no important context is lost at chunk boundaries.
 
-**Option A — Docker (recommended):**
-```bash
-docker run -d --name redis -p 6379:6379 redis:7-alpine
-```
+2. **Batched Embedding:** Chunks are sent to the HuggingFace Inference API in batches of 16 via `hf_client.embed_text()`. The API returns a list of 384-dimensional float vectors, one per input text.
 
-**Option B — WSL (Windows):**
-```bash
-wsl
-sudo apt update && sudo apt install redis-server
-sudo service redis-server start
-```
+3. **Bulk Storage:** Each chunk and its vector are saved as a `TranscriptChunk` row using Django's `bulk_create()` for efficiency. The HNSW index is automatically maintained by PostgreSQL.
 
-**Option C — Memurai (native Windows Redis alternative):**
-Download from https://www.memurai.com/ and install.
+4. **Progress Reporting:** The embedding stage reports progress to Redis (75% → 90%) so the SSE-powered progress UI keeps the user informed.
 
-### 2. Install Python dependencies
-```bash
-pip install -r requirements.txt
-```
+---
 
-### 3. Run Django
-```bash
-python manage.py runserver
-```
+## How Retrieval Works at Query Time
 
-### 4. Run Celery Worker (separate terminal)
-```bash
-celery -A meeting_summarizer worker --loglevel=info --pool=solo
-```
-> **Note:** `--pool=solo` is required on Windows. On Linux/Mac, omit it for better performance.
+When a user submits a question on the meeting detail page:
 
-### 5. (Optional) Add REDIS_URL to .env
-If Redis is not running on the default `localhost:6379`, set:
-```
-REDIS_URL=redis://your-redis-host:6379/0
-```
+1. **Question Embedding:** The user's question is sent to the same `all-MiniLM-L6-v2` model via `hf_client.embed_text(question)`, producing a single 384-dim vector.
 
-### Verify everything is connected
-1. Start Redis, Django, and Celery
-2. Upload an audio file or paste meeting text
-3. You should be redirected to the processing page with a live progress bar
-4. When complete, you'll be auto-redirected to the meeting detail page
+2. **Vector Search:** The `MeetingRAGProcessor._retrieve_chunks()` method runs a Django ORM query:
+   ```python
+   TranscriptChunk.objects
+       .filter(meeting_id=meeting_id)
+       .annotate(distance=CosineDistance('embedding', question_embedding))
+       .order_by('distance')[:4]
+   ```
+   This translates to a SQL query using pgvector's `<=>` cosine distance operator, filtered to only chunks belonging to the current meeting, returning the 4 closest matches.
+
+3. **Context Assembly:** The text of the top 4 chunks is concatenated with `---` separators.
+
+4. **Answer Generation:** The assembled context + question are sent to the Groq API (Llama 3.3 70B) using the exact same prompt template as before. Nothing about the LLM call changed — only how we select which chunks to include.
+
+5. **Response:** The answer and source snippets (with relevance scores) are returned as JSON to the frontend.
